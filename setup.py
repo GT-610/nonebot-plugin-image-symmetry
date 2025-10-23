@@ -12,6 +12,8 @@ setup(
         "nonebot2>=2.0.0-beta.1",
         "nonebot-adapter-onebot>=2.0.0-beta.1",
         "Pillow>=9.0.0",
+        "aiohttp>=3.8.0",
+        "nonebot-plugin-localstore>=0.3.0",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
