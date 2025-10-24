@@ -73,50 +73,75 @@ def create_matcher(command: Command):
                 logger.info(f"从命令参数获取图片: {image_info}")
                 
                 # 下载图片
-                try:
-                    # 使用image_fetch获取图片字节数据
-                    img_bytes = await image_fetch(event, bot, state, img)
-                    if not img_bytes:
-                        logger.error("图片下载失败: 返回空数据")
-                        await matcher.finish("图片下载失败，请重试")
-                        return
-                    
-                    logger.info(f"成功下载图片，大小: {len(img_bytes)} 字节")
-                    
-                    # 使用工具类处理图片
-                    temp_file_path = SymmetryUtils.bytes_to_temp_file(img_bytes)
-                    if not temp_file_path:
-                        logger.error("保存图片失败")
-                        await matcher.finish("保存图片失败，请重试")
-                        return
-                    
-                    logger.info(f"图片已保存至: {temp_file_path}")
-                    
-                    # 获取图片的唯一标识符（基于内容的哈希值）
-                    # 注意：bytes_to_temp_file现在直接使用哈希值作为文件名
-                    image_hash = os.path.basename(temp_file_path).split('.')[0]
-                    logger.info(f"图片唯一标识符: {image_hash}")
-                    
-                    # 任务完成：返回成功信息
-                    await matcher.finish(
-                        f"命令执行成功！\n"  
-                        f"识别到的指令: {main_keyword}\n"  
-                        f"图片信息: {image_info}\n"  
-                        f"图片已下载并缓存\n"  
-                        f"缓存路径: {temp_file_path}\n"  
-                        f"唯一标识: {image_hash}"
-                    )
+                # 使用image_fetch获取图片字节数据
+                img_bytes = await image_fetch(event, bot, state, img)
+                if not img_bytes:
+                    logger.error("图片下载失败: 返回空数据")
+                    await matcher.finish("图片下载失败，请重试")
                     return
-                    
-                except Exception as e:
-                    logger.error(f"下载图片时发生错误: {e}")
-                    await matcher.finish(f"下载图片失败: {str(e)}")
+                
+                logger.info(f"成功下载图片，大小: {len(img_bytes)} 字节")
+                
+                # 使用工具类处理图片
+                temp_file_path = SymmetryUtils.bytes_to_temp_file(img_bytes)
+                if not temp_file_path:
+                    logger.error("保存图片失败")
+                    await matcher.finish("保存图片失败，请重试")
                     return
+                
+                logger.info(f"图片已保存至: {temp_file_path}")
+                
+                # 获取图片的唯一标识符（基于内容的哈希值）
+                # 注意：bytes_to_temp_file现在直接使用哈希值作为文件名
+                image_hash = os.path.basename(temp_file_path).split('.')[0]
+                logger.info(f"图片唯一标识符: {image_hash}")
+                
+                # 获取命令对应的处理函数和方向标识符
+                direction_map = {
+                    "对称左": "left",
+                    "对称": "left",
+                    "对称右": "right",
+                    "对称上": "top",
+                    "对称下": "bottom"
+                }
+                direction = direction_map.get(main_keyword, "unknown")
+                
+                # 执行图像处理
+                logger.info(f"开始处理图片，方向: {direction}")
+                processed_bytes = await run_sync(command.func)(img_bytes)
+                
+                if not processed_bytes:
+                    logger.error("图像处理失败，返回空数据")
+                    await matcher.finish("图像处理失败，请重试")
+                    return
+                
+                # 保存处理后的图片到after目录
+                after_dir = SymmetryUtils.get_after_cache_dir()
+                output_filename = f"{image_hash}_{direction}.jpg"
+                output_path = os.path.join(after_dir, output_filename)
+                
+                with open(output_path, 'wb') as f:
+                    f.write(processed_bytes)
+                
+                logger.info(f"处理后图片已保存至: {output_path}")
+                logger.info(f"处理后图片大小: {len(processed_bytes)} 字节")
+                
+                # 任务完成：返回成功信息
+                await matcher.finish(
+                    f"命令执行成功！\n"  
+                    f"识别到的指令: {main_keyword}\n"  
+                    f"图片信息: {image_info}\n"  
+                    f"原始图片缓存路径: {temp_file_path}\n"  
+                    f"处理后图片路径: {output_path}\n"  
+                    f"图片唯一标识: {image_hash}"
+                )
+                return
             
             # 根据测试，当没有图片时命令不会触发，所以只保留通用异常处理
         except Exception as e:
             logger.error(f"处理命令时发生错误: {e}")
-            await matcher.finish(f"处理失败: {str(e)}")
+            # 移除异常处理，让错误正常传播
+            raise
 
 # 创建所有命令的匹配器
 def create_matchers():

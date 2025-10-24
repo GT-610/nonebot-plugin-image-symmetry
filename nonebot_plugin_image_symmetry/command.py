@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Callable, Optional, Any
 
+from nonebot.log import logger
 from nonebot_plugin_alconna import Args, Image
 
 from .functions import (
@@ -22,17 +23,19 @@ class Command:
     args: Args  # 参数定义
     func: Callable  # 处理函数
 
-# 定义处理函数，将字节流转换为临时文件路径后调用实际处理函数
+# 定义处理函数，直接处理字节流并返回结果
 def symmetric_left_process(img_bytes: bytes) -> Optional[bytes]:
     """对称左处理函数"""
+    # 创建临时文件用于处理，但不清理（因为已经在before目录保存了原始图片）
     temp_file = SymmetryUtils.bytes_to_temp_file(img_bytes)
     if not temp_file:
         return None
     
     try:
         return process_image_symmetric_left(temp_file)
-    finally:
-        SymmetryUtils.cleanup_temp_file(temp_file)
+    except Exception as e:
+        logger.error(f"对称左处理函数执行失败: {e}")
+        return None
 
 
 def symmetric_right_process(img_bytes: bytes) -> Optional[bytes]:
@@ -43,8 +46,9 @@ def symmetric_right_process(img_bytes: bytes) -> Optional[bytes]:
     
     try:
         return process_image_symmetric_right(temp_file)
-    finally:
-        SymmetryUtils.cleanup_temp_file(temp_file)
+    except Exception as e:
+        logger.error(f"对称右处理函数执行失败: {e}")
+        return None
 
 
 def symmetric_top_process(img_bytes: bytes) -> Optional[bytes]:
@@ -55,8 +59,9 @@ def symmetric_top_process(img_bytes: bytes) -> Optional[bytes]:
     
     try:
         return process_image_symmetric_top(temp_file)
-    finally:
-        SymmetryUtils.cleanup_temp_file(temp_file)
+    except Exception as e:
+        logger.error(f"对称上处理函数执行失败: {e}")
+        return None
 
 
 def symmetric_bottom_process(img_bytes: bytes) -> Optional[bytes]:
@@ -67,8 +72,9 @@ def symmetric_bottom_process(img_bytes: bytes) -> Optional[bytes]:
     
     try:
         return process_image_symmetric_bottom(temp_file)
-    finally:
-        SymmetryUtils.cleanup_temp_file(temp_file)
+    except Exception as e:
+        logger.error(f"对称下处理函数执行失败: {e}")
+        return None
 
 
 # 创建命令列表
