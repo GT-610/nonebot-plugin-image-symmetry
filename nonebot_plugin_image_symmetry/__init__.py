@@ -114,13 +114,12 @@ def create_matcher(command: Command):
                     logger.error("图像处理失败，返回空数据")
                     await matcher.finish("图像处理失败，请重试")
                 
-                # 保存处理后的图片到after目录
-                after_dir = SymmetryUtils.get_after_cache_dir()
-                output_filename = f"{image_hash}_{direction}.jpg"
-                output_path = os.path.join(after_dir, output_filename)
-                
-                with open(output_path, 'wb') as f:
-                    f.write(processed_bytes)
+                # 保存处理后的图片到after目录，同时进行缓存清理
+                output_path = SymmetryUtils.save_processed_image(image_hash, direction, processed_bytes)
+                if not output_path:
+                    logger.error("保存处理后图片失败")
+                    await matcher.finish("保存处理后图片失败，请重试")
+                    return
                 
                 logger.debug(f"处理后图片已保存至: {output_path}")
                 logger.debug(f"处理后图片大小: {len(processed_bytes)} 字节")
