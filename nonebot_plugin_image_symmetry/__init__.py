@@ -19,7 +19,6 @@ from nonebot_plugin_alconna.uniseg.tools import image_fetch
 
 # 导入其他模块
 from .command import Command, commands
-from .config import Config
 from .utils import SymmetryUtils
 
 # 定义插件元数据
@@ -29,7 +28,6 @@ __plugin_meta__ = PluginMetadata(
     usage="发送‘对称左’/‘对称右’/‘对称上’/‘对称下’或简写‘对称’（默认为左对称）加上图片，或者回复图片消息加上对应命令",
     type="application",
     homepage="https://github.com/GT-610/nonebot-plugin-image-symmetry",
-    config=Config,
     supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),
 )
 

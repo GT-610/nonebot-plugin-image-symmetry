@@ -2,5 +2,41 @@
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "nonebot-plugin-image-symmetry"
+version = "0.1.0"
+description = "NoneBot 图像对称处理插件，提供图片上下左右四个方向的对称变换功能"
+readme = "README.md"
+requires-python = ">=3.9, <4.0"
+license = { file = "LICENSE" }
+
+authors = [
+    { name = "GT610", email = "" }
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+[project.dependencies]
+nonebot2 = ">=2.0.0,<3.0.0"
+nonebot-plugin-alconna = ">=0.50.0,<1.0.0"
+nonebot-plugin-localstore = ">=0.6.0,<1.0.0"
+pillow = ">=9.0.0,<11.0.0"
+
 [tool.setuptools.packages.find]
 where = ["nonebot_plugin_image_symmetry"]
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 88
+target-version = ["py39", "py310", "py311", "py312"]

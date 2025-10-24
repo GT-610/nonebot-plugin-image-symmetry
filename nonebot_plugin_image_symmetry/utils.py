@@ -17,12 +17,15 @@ class SymmetryUtils:
             max_size = int(env_value)
             # 确保值在有效范围内
             if 5 <= max_size <= 9999:
+                logger.debug(f"使用最大缓存图片数量: {max_size} (从环境变量获取)")
                 return max_size
             else:
                 logger.warning(f"环境变量IMAGE_SYMMETRY_MAX_CACHE值{max_size}超出范围[5, 9999]，使用默认值100")
+                logger.debug(f"使用最大缓存图片数量: 100 (默认值)")
                 return 100
         except ValueError:
             logger.warning(f"环境变量IMAGE_SYMMETRY_MAX_CACHE值'{env_value}'无效，使用默认值100")
+            logger.debug(f"使用最大缓存图片数量: 100 (默认值)")
             return 100
     
     # 两个目录总计的最大缓存图片数量
