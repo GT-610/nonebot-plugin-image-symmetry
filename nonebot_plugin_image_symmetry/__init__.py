@@ -1,3 +1,4 @@
+import os
 from nonebot import require, get_driver
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from nonebot.adapters import Bot, Event
@@ -71,9 +72,46 @@ def create_matcher(command: Command):
                 image_info = f"命令参数图片 - URL: {getattr(img, 'url', 'N/A')}"
                 logger.info(f"从命令参数获取图片: {image_info}")
                 
-                # 暂时搁置实际的图像处理，仅输出调试信息
-                await matcher.finish(f"命令捕获成功！\n识别到的指令: {main_keyword}\n图片信息: {image_info}")
-                return
+                # 下载图片
+                try:
+                    # 使用image_fetch获取图片字节数据
+                    img_bytes = await image_fetch(event, bot, state, img)
+                    if not img_bytes:
+                        logger.error("图片下载失败: 返回空数据")
+                        await matcher.finish("图片下载失败，请重试")
+                        return
+                    
+                    logger.info(f"成功下载图片，大小: {len(img_bytes)} 字节")
+                    
+                    # 使用工具类处理图片
+                    temp_file_path = SymmetryUtils.bytes_to_temp_file(img_bytes)
+                    if not temp_file_path:
+                        logger.error("保存图片失败")
+                        await matcher.finish("保存图片失败，请重试")
+                        return
+                    
+                    logger.info(f"图片已保存至: {temp_file_path}")
+                    
+                    # 获取图片的唯一标识符（基于内容的哈希值）
+                    # 注意：bytes_to_temp_file现在直接使用哈希值作为文件名
+                    image_hash = os.path.basename(temp_file_path).split('.')[0]
+                    logger.info(f"图片唯一标识符: {image_hash}")
+                    
+                    # 任务完成：返回成功信息
+                    await matcher.finish(
+                        f"命令执行成功！\n"  
+                        f"识别到的指令: {main_keyword}\n"  
+                        f"图片信息: {image_info}\n"  
+                        f"图片已下载并缓存\n"  
+                        f"缓存路径: {temp_file_path}\n"  
+                        f"唯一标识: {image_hash}"
+                    )
+                    return
+                    
+                except Exception as e:
+                    logger.error(f"下载图片时发生错误: {e}")
+                    await matcher.finish(f"下载图片失败: {str(e)}")
+                    return
             
             # 根据测试，当没有图片时命令不会触发，所以只保留通用异常处理
         except Exception as e:
@@ -102,8 +140,8 @@ def help_cmd():
 @driver.on_startup
 async def _startup():
     """插件启动时的初始化操作"""
-    # 初始化缓存目录
-    SymmetryUtils.get_cache_dir()
+    # 初始化目录结构（包括before和after子目录）
+    SymmetryUtils.initialize_directories()
     # 创建命令匹配器
     create_matchers()
     # 创建帮助命令

@@ -12,12 +12,12 @@ _✨ NoneBot 图像对称处理插件 ✨_
 
 
 <a href="./LICENSE">
-    <img src="https://img.shields.io/github/license/yourusername/nonebot-plugin-image-symmetry.svg" alt="license">
+    <img src="https://img.shields.io/github/license/GT-610/nonebot-plugin-image-symmetry.svg" alt="license">
 </a>
 <a href="https://pypi.python.org/pypi/nonebot-plugin-image-symmetry">
     <img src="https://img.shields.io/pypi/v/nonebot-plugin-image-symmetry.svg" alt="pypi">
 </a>
-<img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="python">
+<img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="python">
 
 </div>
 
@@ -83,6 +83,9 @@ _✨ NoneBot 图像对称处理插件 ✨_
 | 对称上 | 群员 | 否 | 群聊/私聊 | 将图片上半部分镜像到下半部分 |
 | 对称下 | 群员 | 否 | 群聊/私聊 | 将图片下半部分镜像到上半部分 |
 | 对称 | 群员 | 否 | 群聊/私聊 | 对称左的别名 |
+| 对称帮助 | 群员 | 否 | 群聊/私聊 | 显示对称插件的帮助信息 |
+
+注意：上述命令需要加命令前缀。命令前缀为你的 NoneBot2 环境中设置 `COMMAND_START` 变量值。
 
 ### 使用方法
 #### 方法一：同时发送图片和指令
@@ -98,4 +101,4 @@ _✨ NoneBot 图像对称处理插件 ✨_
 
 ## 📝 许可证
 
-本项目采用 Apache License 2.0 许可证。详见 LICENSE 文件。
+本项目采用 Apache License 2.0 许可证。详见 [LICENSE](LICENSE) 文件。
