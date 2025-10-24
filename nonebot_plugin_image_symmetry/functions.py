@@ -1,9 +1,7 @@
 import io
-import os
 from typing import Optional
 from PIL import Image
 from nonebot.log import logger
-from pathlib import Path
 
 
 def process_image_symmetric_left(image_path: str) -> Optional[bytes]:
@@ -36,7 +34,7 @@ def process_image_symmetric_left(image_path: str) -> Optional[bytes]:
             result_img.save(img_byte_arr, format='PNG')
             return img_byte_arr.getvalue()
     except Exception as e:
-        logger.error(f"对称左处理失败: {e}")
+        logger.debug(f"对称左处理失败: {e}")
         return None
 
 
@@ -70,7 +68,7 @@ def process_image_symmetric_right(image_path: str) -> Optional[bytes]:
             result_img.save(img_byte_arr, format='PNG')
             return img_byte_arr.getvalue()
     except Exception as e:
-        logger.error(f"对称右处理失败: {e}")
+        logger.debug(f"对称右处理失败: {e}")
         return None
 
 
@@ -105,7 +103,7 @@ def process_image_symmetric_top(image_path: str) -> Optional[bytes]:
             result_img.save(img_byte_arr, format='PNG')
             return img_byte_arr.getvalue()
     except Exception as e:
-        logger.error(f"对称上处理失败: {e}")
+        logger.debug(f"对称上处理失败: {e}")
         return None
 
 
@@ -139,5 +137,5 @@ def process_image_symmetric_bottom(image_path: str) -> Optional[bytes]:
             result_img.save(img_byte_arr, format='PNG')
             return img_byte_arr.getvalue()
     except Exception as e:
-        logger.error(f"对称下处理失败: {e}")
+        logger.debug(f"对称下处理失败: {e}")
         return None

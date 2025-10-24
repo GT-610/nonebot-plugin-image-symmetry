@@ -1,6 +1,5 @@
 import hashlib
 import os
-from typing import Any
 from nonebot_plugin_localstore import get_cache_dir
 from nonebot.log import logger
 

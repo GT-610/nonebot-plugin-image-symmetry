@@ -19,7 +19,7 @@ from nonebot_plugin_alconna.uniseg.tools import image_fetch
 
 # 导入其他模块
 from .command import Command, commands
-from .config import Config, symmetry_config
+from .config import Config
 from .utils import SymmetryUtils
 
 # 定义插件元数据
@@ -60,8 +60,8 @@ def create_matcher(command: Command):
     async def handle_function(bot: Bot, event: Event, state: T_State, matches: AlcMatches):
         try:
             # 调试输出：打印识别到的命令
-            logger.info(f"识别到命令: {main_keyword}")
-            logger.info(f"完整消息内容: {event.get_plaintext()}")
+            logger.debug(f"识别到命令: {main_keyword}")
+            logger.debug(f"完整消息内容: {event.get_plaintext()}")
             
             img_bytes = None
             image_info = None
@@ -70,7 +70,7 @@ def create_matcher(command: Command):
             if hasattr(matches, 'img') and matches.img:
                 img = matches.img
                 image_info = f"命令参数图片 - URL: {getattr(img, 'url', 'N/A')}"
-                logger.info(f"从命令参数获取图片: {image_info}")
+                logger.debug(f"获取图片: {image_info}")
                 
                 # 下载图片
                 # 使用image_fetch获取图片字节数据
@@ -80,7 +80,7 @@ def create_matcher(command: Command):
                     await matcher.finish("图片下载失败，请重试")
                     return
                 
-                logger.info(f"成功下载图片，大小: {len(img_bytes)} 字节")
+                logger.debug(f"成功下载图片，大小: {len(img_bytes)} 字节")
                 
                 # 使用工具类处理图片
                 temp_file_path = SymmetryUtils.bytes_to_temp_file(img_bytes)
@@ -89,12 +89,12 @@ def create_matcher(command: Command):
                     await matcher.finish("保存图片失败，请重试")
                     return
                 
-                logger.info(f"图片已保存至: {temp_file_path}")
+                logger.debug(f"图片已保存至: {temp_file_path}")
                 
                 # 获取图片的唯一标识符（基于内容的哈希值）
                 # 注意：bytes_to_temp_file现在直接使用哈希值作为文件名
                 image_hash = os.path.basename(temp_file_path).split('.')[0]
-                logger.info(f"图片唯一标识符: {image_hash}")
+                logger.debug(f"图片唯一标识符: {image_hash}")
                 
                 # 获取命令对应的处理函数和方向标识符
                 direction_map = {
@@ -107,13 +107,12 @@ def create_matcher(command: Command):
                 direction = direction_map.get(main_keyword, "unknown")
                 
                 # 执行图像处理
-                logger.info(f"开始处理图片，方向: {direction}")
+                logger.debug(f"开始处理图片，方向: {direction}")
                 processed_bytes = await run_sync(command.func)(img_bytes)
                 
                 if not processed_bytes:
                     logger.error("图像处理失败，返回空数据")
                     await matcher.finish("图像处理失败，请重试")
-                    return
                 
                 # 保存处理后的图片到after目录
                 after_dir = SymmetryUtils.get_after_cache_dir()
@@ -123,27 +122,17 @@ def create_matcher(command: Command):
                 with open(output_path, 'wb') as f:
                     f.write(processed_bytes)
                 
-                logger.info(f"处理后图片已保存至: {output_path}")
-                logger.info(f"处理后图片大小: {len(processed_bytes)} 字节")
+                logger.debug(f"处理后图片已保存至: {output_path}")
+                logger.debug(f"处理后图片大小: {len(processed_bytes)} 字节")
                 
-                # 发送处理后的图片
-                logger.info(f"准备发送处理后的图片: {output_path}")
-                
-                # 构建发送消息
-                message = UniMessage()
-                message += UniMessage.text(f"🔹 图像处理完成！\n\n")
-                message += UniMessage.image(path=output_path)
-                message += UniMessage.text(f"\n📝 处理详情：\n- 命令: {main_keyword}\n- 方向: {direction}\n- 图片标识: {image_hash}")
-                
-                # 发送消息
-                await message.send()
-                await matcher.finish()
+                # 只发送处理后的图片
+                logger.debug(f"准备发送处理后的图片: {output_path}")
+                await UniMessage.image(path=output_path).send()
                 return
             
             # 根据测试，当没有图片时命令不会触发，所以只保留通用异常处理
         except Exception as e:
             logger.error(f"处理命令时发生错误: {e}")
-            # 移除异常处理，让错误正常传播
             raise
 
 # 创建所有命令的匹配器
@@ -161,7 +150,7 @@ def help_cmd():
     
     @help_matcher.handle()
     async def handle_help():
-        help_text = "图像对称处理插件使用说明：\n1. 直接发送：命令 + 图片\n2. 回复处理：回复图片消息 + 命令\n\n支持的命令：\n- 对称/对称左：将图片左半部分镜像到右半部分\n- 对称右：将图片右半部分镜像到左半部分\n- 对称上：将图片上半部分镜像到下半部分\n- 对称下：将图片下半部分镜像到上半部分\n\n例如：发送\"对称左\"加上一张图片，或回复一张图片说\"对称上\""
+        help_text = "图像对称处理插件使用说明（GIF暂不可用）：\n1. 直接发送：命令 + 图片\n2. 回复处理：回复图片消息 + 命令\n\n支持的命令：\n- 对称/对称左：将图片左半部分镜像到右半部分\n- 对称右：将图片右半部分镜像到左半部分\n- 对称上：将图片上半部分镜像到下半部分\n- 对称下：将图片下半部分镜像到上半部分\n\n例如：发送\"对称左\"加上一张图片，或回复一张图片说\"对称上\""
         await UniMessage.text(help_text).send()
 
 # 初始化插件
@@ -182,5 +171,3 @@ export = {
     "create_matcher": create_matcher,
     "create_matchers": create_matchers
 }
-
-# 插件初始化完成

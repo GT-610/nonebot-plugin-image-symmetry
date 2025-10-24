@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Optional, Any
+from typing import Callable, Optional
 
 from nonebot.log import logger
 from nonebot_plugin_alconna import Args, Image
@@ -34,7 +34,7 @@ def symmetric_left_process(img_bytes: bytes) -> Optional[bytes]:
     try:
         return process_image_symmetric_left(temp_file)
     except Exception as e:
-        logger.error(f"对称左处理函数执行失败: {e}")
+        logger.debug(f"对称左处理函数执行失败: {e}")
         return None
 
 
@@ -47,7 +47,7 @@ def symmetric_right_process(img_bytes: bytes) -> Optional[bytes]:
     try:
         return process_image_symmetric_right(temp_file)
     except Exception as e:
-        logger.error(f"对称右处理函数执行失败: {e}")
+        logger.debug(f"对称右处理函数执行失败: {e}")
         return None
 
 
@@ -60,7 +60,7 @@ def symmetric_top_process(img_bytes: bytes) -> Optional[bytes]:
     try:
         return process_image_symmetric_top(temp_file)
     except Exception as e:
-        logger.error(f"对称上处理函数执行失败: {e}")
+        logger.debug(f"对称上处理函数执行失败: {e}")
         return None
 
 
@@ -73,7 +73,7 @@ def symmetric_bottom_process(img_bytes: bytes) -> Optional[bytes]:
     try:
         return process_image_symmetric_bottom(temp_file)
     except Exception as e:
-        logger.error(f"对称下处理函数执行失败: {e}")
+        logger.debug(f"对称下处理函数执行失败: {e}")
         return None
 
 
