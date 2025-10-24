@@ -75,9 +75,7 @@ def create_matcher(command: Command):
                 await matcher.finish(f"命令捕获成功！\n识别到的指令: {main_keyword}\n图片信息: {image_info}")
                 return
             
-            # 未找到图片
-            logger.info("未找到图片资源")
-            await matcher.finish("未找到图片，请发送包含图片的消息或回复图片消息")
+            # 根据测试，当没有图片时命令不会触发，所以只保留通用异常处理
         except Exception as e:
             logger.error(f"处理命令时发生错误: {e}")
             await matcher.finish(f"处理失败: {str(e)}")
