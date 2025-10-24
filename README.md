@@ -1,7 +1,7 @@
 <div align="center">
-  <a href="https://v2.nonebot.dev/store"><img src="https://github.com/A-kirami/nonebot-plugin-template/blob/resources/nbp_logo.png" width="180" height="180" alt="NoneBotPluginLogo"></a>
+  <a href="https://v2.nonebot.dev/store"><img src="https://raw.githubusercontent.com/A-kirami/nonebot-plugin-template/refs/heads/resources/nbp_logo.png" width="180" height="180" alt="NoneBotPluginLogo"></a>
   <br>
-  <p><img src="https://github.com/A-kirami/nonebot-plugin-template/blob/resources/NoneBotPlugin.svg" width="240" alt="NoneBotPluginText"></p>
+  <p><img src="https://raw.githubusercontent.com/A-kirami/nonebot-plugin-template/refs/heads/resources/NoneBotPlugin.svg" width="240" alt="NoneBotPluginText"></p>
 </div>
 
 <div align="center">
@@ -30,6 +30,8 @@ _✨ NoneBot 图像对称处理插件 ✨_
 - 对称下：将图片下半部分镜像翻转后覆盖到上半部分
 
 ## 💿 安装
+
+此插件需要 `httpx` 驱动器，请先在 `DRIVER` 变量中添加 `~httpx`。
 
 <details open>
 <summary>使用 nb-cli 安装</summary>
@@ -90,6 +92,8 @@ IMAGE_SYMMETRY_MAX_CACHE=200
 ```
 
 ## 🎉 使用
+注意：下列命令需要加命令前缀。命令前缀为你的 NoneBot2 环境配置中， `COMMAND_START` 变量的值。
+
 ### 指令表
 | 指令 | 权限 | 需要@ | 范围 | 说明 |
 |:-----:|:----:|:----:|:----:|:----:|
@@ -99,8 +103,6 @@ IMAGE_SYMMETRY_MAX_CACHE=200
 | 对称下 | 群员 | 否 | 群聊/私聊 | 将图片下半部分镜像到上半部分 |
 | 对称 | 群员 | 否 | 群聊/私聊 | 对称左的别名 |
 | 对称帮助 | 群员 | 否 | 群聊/私聊 | 显示对称插件的帮助信息 |
-
-注意：上述命令需要加命令前缀。命令前缀为你的 NoneBot2 环境配置中， `COMMAND_START` 变量的值。
 
 ### 使用方法
 #### 方法一：同时发送图片和指令
