@@ -1,0 +1,1 @@
+nonebot-plugin-alconna>=0.50.0
