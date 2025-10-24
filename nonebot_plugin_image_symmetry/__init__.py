@@ -126,15 +126,18 @@ def create_matcher(command: Command):
                 logger.info(f"处理后图片已保存至: {output_path}")
                 logger.info(f"处理后图片大小: {len(processed_bytes)} 字节")
                 
-                # 任务完成：返回成功信息
-                await matcher.finish(
-                    f"命令执行成功！\n"  
-                    f"识别到的指令: {main_keyword}\n"  
-                    f"图片信息: {image_info}\n"  
-                    f"原始图片缓存路径: {temp_file_path}\n"  
-                    f"处理后图片路径: {output_path}\n"  
-                    f"图片唯一标识: {image_hash}"
-                )
+                # 发送处理后的图片
+                logger.info(f"准备发送处理后的图片: {output_path}")
+                
+                # 构建发送消息
+                message = UniMessage()
+                message += UniMessage.text(f"🔹 图像处理完成！\n\n")
+                message += UniMessage.image(path=output_path)
+                message += UniMessage.text(f"\n📝 处理详情：\n- 命令: {main_keyword}\n- 方向: {direction}\n- 图片标识: {image_hash}")
+                
+                # 发送消息
+                await message.send()
+                await matcher.finish()
                 return
             
             # 根据测试，当没有图片时命令不会触发，所以只保留通用异常处理
