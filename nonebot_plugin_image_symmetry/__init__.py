@@ -65,7 +65,7 @@ def create_matcher(command: Command):
             img_bytes = None
             image_info = None
             
-            # 1. 尝试从命令参数中获取图片 (通过 matches)
+            # 从命令参数中获取图片 (通过 matches)
             if hasattr(matches, 'img') and matches.img:
                 img = matches.img
                 image_info = f"命令参数图片 - URL: {getattr(img, 'url', 'N/A')}"
@@ -74,38 +74,6 @@ def create_matcher(command: Command):
                 # 暂时搁置实际的图像处理，仅输出调试信息
                 await matcher.finish(f"命令捕获成功！\n识别到的指令: {main_keyword}\n图片信息: {image_info}")
                 return
-            
-            # 2. 尝试从当前消息中获取图片
-            from nonebot.adapters import Message
-            message = event.get_message()
-            for seg in message:
-                if seg.type == 'image':
-                    file_id = seg.data.get('file', 'N/A')
-                    url = seg.data.get('url', 'N/A')
-                    image_info = f"当前消息图片 - 文件ID: {file_id}, URL: {url}"
-                    logger.info(f"从当前消息获取图片: {image_info}")
-                    
-                    # 暂时搁置实际的图像处理，仅输出调试信息
-                    await matcher.finish(f"命令捕获成功！\n识别到的指令: {main_keyword}\n图片信息: {image_info}")
-                    return
-            
-            # 3. 尝试从回复消息中获取图片
-            reply_msg_id = None
-            # 检查是否有reply字段或引用消息
-            if hasattr(event, 'reply') and event.reply:
-                reply_msg_id = getattr(event.reply, 'message_id', 'N/A')
-                reply_message = getattr(event.reply, 'message', Message())
-                
-                for seg in reply_message:
-                    if seg.type == 'image':
-                        file_id = seg.data.get('file', 'N/A')
-                        url = seg.data.get('url', 'N/A')
-                        image_info = f"回复消息图片(ID:{reply_msg_id}) - 文件ID: {file_id}, URL: {url}"
-                        logger.info(f"从回复消息获取图片: {image_info}")
-                        
-                        # 暂时搁置实际的图像处理，仅输出调试信息
-                        await matcher.finish(f"命令捕获成功！\n识别到的指令: {main_keyword}\n图片信息: {image_info}")
-                        return
             
             # 未找到图片
             logger.info("未找到图片资源")
