@@ -18,6 +18,9 @@ _✨ NoneBot 图像对称处理插件 ✨_
     <img src="https://img.shields.io/pypi/v/nonebot-plugin-image-symmetry.svg" alt="pypi">
 </a>
 <img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="python">
+<a href="https://v2.nonebot.dev/">
+    <img src="https://img.shields.io/badge/NoneBot-v2-green.svg" alt="NoneBot2">
+</a>
 
 </div>
 
