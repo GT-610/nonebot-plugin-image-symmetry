@@ -10,7 +10,6 @@ from .functions import (
     process_image_symmetric_top,
     process_image_symmetric_bottom
 )
-from .utils import SymmetryUtils
 
 # 定义参数
 arg_image = Args["img", Image]

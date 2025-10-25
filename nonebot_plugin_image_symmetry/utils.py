@@ -183,14 +183,7 @@ class SymmetryUtils:
             logger.error(f"创建临时文件失败: {e}")
             return None, None
     
-    @staticmethod
-    def cleanup_temp_file(file_path: str) -> None:
-        """清理临时文件"""
-        try:
-            if file_path and os.path.exists(file_path):
-                os.remove(file_path)
-        except Exception as e:
-            logger.error(f"清理临时文件失败: {e}")
+
     
     @staticmethod
     def save_processed_image(image_hash: str, direction: str, processed_bytes: bytes, image_type: str = None) -> str:

@@ -1,5 +1,3 @@
-import os
-import hashlib
 from nonebot import require, get_driver
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from nonebot.adapters import Bot, Event
@@ -148,7 +146,7 @@ def help_cmd():
     
     @help_matcher.handle()
     async def handle_help():
-        help_text = "图像对称处理插件使用说明（支持GIF动态图）：\n1. 直接发送：命令 + 图片\n2. 回复处理：回复图片消息 + 命令\n\n支持的命令：\n- 对称/对称左：将图片左半部分镜像到右半部分\n- 对称右：将图片右半部分镜像到左半部分\n- 对称上：将图片上半部分镜像到下半部分\n- 对称下：将图片下半部分镜像到上半部分\n\n例如：发送'对称左'加上一张图片，或回复一张图片说'对称上'"
+        help_text = "图像对称处理插件使用说明（记得加前缀）：\n1. 直接发送：命令 + 图片\n2. 回复处理：回复图片消息 + 命令\n\n支持的命令：\n- 对称/对称左：将图片左半部分镜像到右半部分\n- 对称右：将图片右半部分镜像到左半部分\n- 对称上：将图片上半部分镜像到下半部分\n- 对称下：将图片下半部分镜像到上半部分\n\n例如：发送'对称左'加上一张图片，或回复一张图片说'对称上'"
         await UniMessage.text(help_text).send()
 
 # 初始化插件
@@ -162,10 +160,3 @@ async def _startup():
     # 创建帮助命令
     help_cmd()
     logger.info("图像对称处理插件已启动")
-
-# 导出供其他插件使用的功能
-export = {
-    "commands": commands,
-    "create_matcher": create_matcher,
-    "create_matchers": create_matchers
-}
