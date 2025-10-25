@@ -24,54 +24,37 @@ class Command:
     func: Callable  # 处理函数
 
 # 定义处理函数，直接处理字节流并返回结果
-def symmetric_left_process(img_bytes: bytes) -> Optional[bytes]:
+def symmetric_left_process(temp_path: str, image_type: str = None) -> Optional[bytes]:
     """对称左处理函数"""
-    # 创建临时文件用于处理，但不清理（因为已经在before目录保存了原始图片）
-    temp_file = SymmetryUtils.bytes_to_temp_file(img_bytes)
-    if not temp_file:
-        return None
-    
     try:
-        return process_image_symmetric_left(temp_file)
+        return process_image_symmetric_left(temp_path, image_type)
     except Exception as e:
         logger.debug(f"对称左处理函数执行失败: {e}")
         return None
 
 
-def symmetric_right_process(img_bytes: bytes) -> Optional[bytes]:
+def symmetric_right_process(temp_path: str, image_type: str = None) -> Optional[bytes]:
     """对称右处理函数"""
-    temp_file = SymmetryUtils.bytes_to_temp_file(img_bytes)
-    if not temp_file:
-        return None
-    
     try:
-        return process_image_symmetric_right(temp_file)
+        return process_image_symmetric_right(temp_path, image_type)
     except Exception as e:
         logger.debug(f"对称右处理函数执行失败: {e}")
         return None
 
 
-def symmetric_top_process(img_bytes: bytes) -> Optional[bytes]:
+def symmetric_top_process(temp_path: str, image_type: str = None) -> Optional[bytes]:
     """对称上处理函数"""
-    temp_file = SymmetryUtils.bytes_to_temp_file(img_bytes)
-    if not temp_file:
-        return None
-    
     try:
-        return process_image_symmetric_top(temp_file)
+        return process_image_symmetric_top(temp_path, image_type)
     except Exception as e:
         logger.debug(f"对称上处理函数执行失败: {e}")
         return None
 
 
-def symmetric_bottom_process(img_bytes: bytes) -> Optional[bytes]:
+def symmetric_bottom_process(temp_path: str, image_type: str = None) -> Optional[bytes]:
     """对称下处理函数"""
-    temp_file = SymmetryUtils.bytes_to_temp_file(img_bytes)
-    if not temp_file:
-        return None
-    
     try:
-        return process_image_symmetric_bottom(temp_file)
+        return process_image_symmetric_bottom(temp_path, image_type)
     except Exception as e:
         logger.debug(f"对称下处理函数执行失败: {e}")
         return None

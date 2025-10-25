@@ -1,6 +1,8 @@
 import hashlib
+import imghdr
+import io
 import os
-import time
+from PIL import Image
 from nonebot_plugin_localstore import get_cache_dir
 from nonebot.log import logger
 
@@ -117,26 +119,69 @@ class SymmetryUtils:
             logger.error(f"全局缓存清理失败: {e}")
     
     @staticmethod
-    def bytes_to_temp_file(img_bytes: bytes) -> str:
-        """将字节流转换为临时文件并返回路径
+    def identify_image_type(img_bytes: bytes) -> str:
+        """识别图像类型
+        
+        Args:
+            img_bytes: 图像字节数据
+            
+        Returns:
+            图像类型字符串，如'jpg', 'png', 'gif'等，如果无法识别则返回'unknown'
+        """
+        # 首先使用imghdr库尝试识别
+        image_type = imghdr.what(None, h=img_bytes)
+        
+        # 如果imghdr无法识别，尝试使用PIL库
+        if not image_type:
+            try:
+                with Image.open(io.BytesIO(img_bytes)) as img:
+                    # 获取图像格式
+                    format_type = img.format.lower() if img.format else None
+                    # 检查是否为GIF动画
+                    if format_type == 'gif' and getattr(img, 'is_animated', False):
+                        return 'gif_animated'
+                    return format_type
+            except Exception as e:
+                logger.debug(f"PIL识别图像格式失败: {e}")
+                return 'unknown'
+                
+        # 检查是否为GIF动画（使用PIL进行二次确认）
+        if image_type == 'gif':
+            try:
+                with Image.open(io.BytesIO(img_bytes)) as img:
+                    if getattr(img, 'is_animated', False):
+                        return 'gif_animated'
+            except Exception:
+                pass
+                
+        return image_type
+    
+    @staticmethod
+    def bytes_to_temp_file(img_bytes: bytes) -> tuple:
+        """将字节流转换为临时文件并返回路径和图像类型
         在保存前先检查并清理全局缓存
         """
         # 先清理全局缓存（控制两个目录的总数量）
         SymmetryUtils.cleanup_global_cache()
         
+        # 识别图像类型
+        image_type = SymmetryUtils.identify_image_type(img_bytes)
+        logger.debug(f"识别到的图像类型: {image_type}")
+        
         # 使用before目录保存原始图片
         before_dir = SymmetryUtils.get_before_cache_dir()
         
         # 生成唯一的文件名（仅使用内容的哈希值）
+        # 仍然使用.jpg扩展名以保持原有功能兼容性
         temp_path = os.path.join(before_dir, f"{hashlib.md5(img_bytes).hexdigest()}.jpg")
         
         try:
             with open(temp_path, 'wb') as f:
                 f.write(img_bytes)
-            return temp_path
+            return temp_path, image_type
         except Exception as e:
             logger.error(f"创建临时文件失败: {e}")
-            return None
+            return None, None
     
     @staticmethod
     def cleanup_temp_file(file_path: str) -> None:
@@ -148,13 +193,14 @@ class SymmetryUtils:
             logger.error(f"清理临时文件失败: {e}")
     
     @staticmethod
-    def save_processed_image(image_hash: str, direction: str, processed_bytes: bytes) -> str:
+    def save_processed_image(image_hash: str, direction: str, processed_bytes: bytes, image_type: str = None) -> str:
         """保存处理后的图片到after目录，并自动清理全局缓存
         
         Args:
             image_hash: 图片的哈希标识符
             direction: 处理方向
             processed_bytes: 处理后的图片字节数据
+            image_type: 图像类型，用于确定保存格式
             
         Returns:
             保存后的文件路径
@@ -163,7 +209,18 @@ class SymmetryUtils:
         SymmetryUtils.cleanup_global_cache()
         
         after_dir = SymmetryUtils.get_after_cache_dir()
-        output_filename = f"{image_hash}_{direction}.jpg"
+        
+        # 根据图像类型确定文件扩展名
+        if image_type and image_type.startswith('gif'):
+            extension = '.gif'
+        elif image_type == 'png':
+            extension = '.png'
+        elif image_type == 'jpg' or image_type == 'jpeg':
+            extension = '.jpg'
+        else:
+            extension = '.jpg'  # 默认使用jpg
+        
+        output_filename = f"{image_hash}_{direction}{extension}"
         output_path = os.path.join(after_dir, output_filename)
         
         try:

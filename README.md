@@ -31,7 +31,10 @@ _✨ NoneBot 图像对称处理插件 ✨_
 
 ## 💿 安装
 
-此插件需要 `httpx` 驱动器，请先在 `DRIVER` 变量中添加 `~httpx`。
+此插件需要 `httpx` 驱动器下载图片，请在 `DRIVER` 变量中添加 `~httpx`。
+
+驱动器安装和配置参考 [NoneBot 选择驱动器](https://nonebot.dev/docs/advanced/driver)。
+
 
 <details open>
 <summary>使用 nb-cli 安装</summary>

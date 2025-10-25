@@ -1,4 +1,5 @@
 import os
+import hashlib
 from nonebot import require, get_driver
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from nonebot.adapters import Bot, Event
@@ -80,19 +81,19 @@ def create_matcher(command: Command):
                 
                 logger.debug(f"成功下载图片，大小: {len(img_bytes)} 字节")
                 
-                # 使用工具类处理图片
-                temp_file_path = SymmetryUtils.bytes_to_temp_file(img_bytes)
-                if not temp_file_path:
+                # 尝试获取图片
+                import hashlib
+                image_hash = hashlib.md5(img_bytes).hexdigest()
+                logger.debug(f"获取图片成功，哈希值: {image_hash}")
+                
+                # 保存图片到临时文件
+                temp_path, image_type = SymmetryUtils.bytes_to_temp_file(img_bytes)
+                if not temp_path:
                     logger.error("保存图片失败")
                     await matcher.finish("保存图片失败，请重试")
                     return
                 
-                logger.debug(f"图片已保存至: {temp_file_path}")
-                
-                # 获取图片的唯一标识符（基于内容的哈希值）
-                # 注意：bytes_to_temp_file现在直接使用哈希值作为文件名
-                image_hash = os.path.basename(temp_file_path).split('.')[0]
-                logger.debug(f"图片唯一标识符: {image_hash}")
+                logger.debug(f"图片已保存至: {temp_path}")
                 
                 # 获取命令对应的处理函数和方向标识符
                 direction_map = {
@@ -106,14 +107,14 @@ def create_matcher(command: Command):
                 
                 # 执行图像处理
                 logger.debug(f"开始处理图片，方向: {direction}")
-                processed_bytes = await run_sync(command.func)(img_bytes)
+                processed_bytes = await run_sync(command.func)(temp_path, image_type)
                 
                 if not processed_bytes:
                     logger.error("图像处理失败，返回空数据")
                     await matcher.finish("图像处理失败，请重试")
                 
                 # 保存处理后的图片到after目录，同时进行缓存清理
-                output_path = SymmetryUtils.save_processed_image(image_hash, direction, processed_bytes)
+                output_path = SymmetryUtils.save_processed_image(image_hash, direction, processed_bytes, image_type)
                 if not output_path:
                     logger.error("保存处理后图片失败")
                     await matcher.finish("保存处理后图片失败，请重试")
@@ -147,7 +148,7 @@ def help_cmd():
     
     @help_matcher.handle()
     async def handle_help():
-        help_text = "图像对称处理插件使用说明（GIF暂不可用）：\n1. 直接发送：命令 + 图片\n2. 回复处理：回复图片消息 + 命令\n\n支持的命令：\n- 对称/对称左：将图片左半部分镜像到右半部分\n- 对称右：将图片右半部分镜像到左半部分\n- 对称上：将图片上半部分镜像到下半部分\n- 对称下：将图片下半部分镜像到上半部分\n\n例如：发送\"对称左\"加上一张图片，或回复一张图片说\"对称上\""
+        help_text = "图像对称处理插件使用说明（支持GIF动态图）：\n1. 直接发送：命令 + 图片\n2. 回复处理：回复图片消息 + 命令\n\n支持的命令：\n- 对称/对称左：将图片左半部分镜像到右半部分\n- 对称右：将图片右半部分镜像到左半部分\n- 对称上：将图片上半部分镜像到下半部分\n- 对称下：将图片下半部分镜像到上半部分\n\n例如：发送'对称左'加上一张图片，或回复一张图片说'对称上'"
         await UniMessage.text(help_text).send()
 
 # 初始化插件
