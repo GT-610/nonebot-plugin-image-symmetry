@@ -1,5 +1,5 @@
 import io
-from typing import Optional
+from typing import Optional, List, Tuple
 from PIL import Image, ImageSequence
 from nonebot.log import logger
 
@@ -91,8 +91,56 @@ def _process_single_frame(img: Image.Image, direction: str) -> Image.Image:
     
     return result_img
 
-def process_image_symmetric_left(image_path: str, image_type: str = None) -> Optional[bytes]:
-    """处理图片，将左半部分镜像覆盖到右半部分"""
+
+def _process_gif_frames(img: Image.Image, direction: str) -> Tuple[List[Image.Image], List[int]]:
+    """处理GIF动画的所有帧并提取延迟信息"""
+    frames = []
+    durations = []
+    
+    for frame in ImageSequence.Iterator(img):
+        # 处理每一帧
+        processed_frame = _process_single_frame(frame, direction)
+        frames.append(processed_frame)
+        # 获取帧延迟
+        durations.append(frame.info.get('duration', 100))  # 使用默认值100ms
+    
+    return frames, durations
+
+
+def _save_processed_gif(frames: List[Image.Image], durations: List[int], original_img: Image.Image) -> io.BytesIO:
+    """保存处理后的GIF动画，确保透明度正确处理"""
+    img_byte_arr = io.BytesIO()
+    
+    # 确保所有帧都是相同的模式（RGBA）
+    processed_frames = []
+    for frame in frames:
+        if frame.mode != 'RGBA':
+            frame = frame.convert('RGBA')
+        processed_frames.append(frame)
+    
+    # 准备GIF保存参数
+    gif_params = {
+        'format': 'GIF',
+        'append_images': processed_frames[1:],
+        'save_all': True,
+        'duration': durations,
+        'loop': 0,
+        'disposal': 2,
+        'optimize': False
+    }
+    
+    # 只在原始图像有透明色信息时添加transparency参数
+    if hasattr(original_img, 'info') and 'transparency' in original_img.info:
+        # 不再强制设置transparency=None，让PIL根据原始信息处理
+        gif_params['transparency'] = original_img.info['transparency']
+    
+    # 保存GIF
+    processed_frames[0].save(img_byte_arr, **gif_params)
+    return img_byte_arr
+
+
+def _process_image_symmetric(image_path: str, direction: str, image_type: str = None) -> Optional[bytes]:
+    """通用图像对称处理函数"""
     try:
         img = Image.open(image_path)
         
@@ -101,243 +149,58 @@ def process_image_symmetric_left(image_path: str, image_type: str = None) -> Opt
         
         if is_gif:
             logger.debug(f"处理GIF动画，帧数: {img.n_frames}")
-            # 处理GIF动画
-            frames = []
-            durations = []
-            
-            for frame in ImageSequence.Iterator(img):
-                # 处理每一帧，不再需要预先转换为RGBA，_process_single_frame内部会处理
-                processed_frame = _process_single_frame(frame, "left")
-                frames.append(processed_frame)
-                # 获取帧延迟
-                if 'duration' in frame.info:
-                    durations.append(frame.info['duration'])
-                else:
-                    durations.append(100)  # 默认延迟
+            # 处理GIF动画的所有帧
+            frames, durations = _process_gif_frames(img, direction)
             
             # 保存处理后的GIF
-            img_byte_arr = io.BytesIO()
-            
-            # 确保所有帧都是相同的模式（RGBA）
-            processed_frames = []
-            for frame in frames:
-                # 确保所有帧都是RGBA模式
-                if frame.mode != 'RGBA':
-                    frame = frame.convert('RGBA')
-                processed_frames.append(frame)
-            
-            # 保存GIF时不使用固定的transparency=0，让PIL自动处理透明色
-            # disposal设为2表示处理完当前帧后恢复到背景色
-            processed_frames[0].save(
-                img_byte_arr,
-                format='GIF',
-                append_images=processed_frames[1:],
-                save_all=True,
-                duration=durations,
-                loop=0,
-                disposal=2,
-                optimize=False,
-                # 移除固定的transparency参数，让PIL自动检测
-                **({'transparency': None} if hasattr(img, 'info') and 'transparency' in img.info else {})
-            )
+            img_byte_arr = _save_processed_gif(frames, durations, img)
             return img_byte_arr.getvalue()
         else:
             # 处理静态图片
-            result_img = _process_single_frame(img, "left")
+            result_img = _process_single_frame(img, direction)
             
             # 保存结果到字节流
             img_byte_arr = io.BytesIO()
-            result_img.save(img_byte_arr, format='PNG')
+            
+            # 获取原始图片格式，保持格式一致性
+            original_format = img.format if img.format else 'PNG'
+            
+            # 对于JPEG和其他非透明格式，需要确保没有透明度通道或正确处理
+            if original_format.upper() == 'JPEG' and result_img.mode == 'RGBA':
+                # 创建白色背景
+                background = Image.new('RGB', result_img.size, (255, 255, 255))
+                # 粘贴RGBA图像到白色背景上
+                background.paste(result_img, mask=result_img.split()[3])  # 使用alpha通道作为遮罩
+                result_img = background
+            
+            # 保留图像的EXIF信息，特别是方向信息
+            exif = img.info.get('exif')
+            if exif:
+                result_img.save(img_byte_arr, format=original_format, exif=exif)
+            else:
+                result_img.save(img_byte_arr, format=original_format)
+                
             return img_byte_arr.getvalue()
     except Exception as e:
-        logger.debug(f"对称左处理失败: {e}")
+        logger.debug(f"对称{direction}处理失败: {e}")
         return None
+
+
+def process_image_symmetric_left(image_path: str, image_type: str = None) -> Optional[bytes]:
+    """处理图片，将左半部分镜像覆盖到右半部分"""
+    return _process_image_symmetric(image_path, "left", image_type)
 
 
 def process_image_symmetric_right(image_path: str, image_type: str = None) -> Optional[bytes]:
     """处理图片，将右半部分镜像覆盖到左半部分"""
-    try:
-        img = Image.open(image_path)
-        
-        # 检查是否为GIF且为动画
-        is_gif = image_type and image_type.startswith('gif') and hasattr(img, 'is_animated') and img.is_animated
-        
-        if is_gif:
-            logger.debug(f"处理GIF动画，帧数: {img.n_frames}")
-            # 处理GIF动画
-            frames = []
-            durations = []
-            
-            for frame in ImageSequence.Iterator(img):
-                # 处理每一帧，不再需要预先转换为RGBA，_process_single_frame内部会处理
-                processed_frame = _process_single_frame(frame, "right")
-                frames.append(processed_frame)
-                # 获取帧延迟
-                if 'duration' in frame.info:
-                    durations.append(frame.info['duration'])
-                else:
-                    durations.append(100)  # 默认延迟
-            
-            # 保存处理后的GIF
-            img_byte_arr = io.BytesIO()
-            
-            # 确保所有帧都是相同的模式（RGBA）
-            processed_frames = []
-            for frame in frames:
-                # 确保所有帧都是RGBA模式
-                if frame.mode != 'RGBA':
-                    frame = frame.convert('RGBA')
-                processed_frames.append(frame)
-            
-            # 保存GIF时不使用固定的transparency=0，让PIL自动处理透明色
-            # disposal设为2表示处理完当前帧后恢复到背景色
-            processed_frames[0].save(
-                img_byte_arr,
-                format='GIF',
-                append_images=processed_frames[1:],
-                save_all=True,
-                duration=durations,
-                loop=0,
-                disposal=2,
-                optimize=False,
-                # 移除固定的transparency参数，让PIL自动检测
-                **({'transparency': None} if hasattr(img, 'info') and 'transparency' in img.info else {})
-            )
-            return img_byte_arr.getvalue()
-        else:
-            # 处理静态图片
-            result_img = _process_single_frame(img, "right")
-            
-            # 保存结果到字节流
-            img_byte_arr = io.BytesIO()
-            result_img.save(img_byte_arr, format='PNG')
-            return img_byte_arr.getvalue()
-    except Exception as e:
-        logger.debug(f"对称右处理失败: {e}")
-        return None
+    return _process_image_symmetric(image_path, "right", image_type)
 
 
 def process_image_symmetric_top(image_path: str, image_type: str = None) -> Optional[bytes]:
     """处理图片，将上半部分镜像覆盖到下半部分"""
-    try:
-        img = Image.open(image_path)
-        
-        # 检查是否为GIF且为动画
-        is_gif = image_type and image_type.startswith('gif') and hasattr(img, 'is_animated') and img.is_animated
-        
-        if is_gif:
-            logger.debug(f"处理GIF动画，帧数: {img.n_frames}")
-            # 处理GIF动画
-            frames = []
-            durations = []
-            
-            for frame in ImageSequence.Iterator(img):
-                # 处理每一帧，不再需要预先转换为RGBA，_process_single_frame内部会处理
-                processed_frame = _process_single_frame(frame, "top")
-                frames.append(processed_frame)
-                # 获取帧延迟
-                if 'duration' in frame.info:
-                    durations.append(frame.info['duration'])
-                else:
-                    durations.append(100)  # 默认延迟
-            
-            # 保存处理后的GIF
-            img_byte_arr = io.BytesIO()
-            
-            # 确保所有帧都是相同的模式（RGBA）
-            processed_frames = []
-            for frame in frames:
-                # 确保所有帧都是RGBA模式
-                if frame.mode != 'RGBA':
-                    frame = frame.convert('RGBA')
-                processed_frames.append(frame)
-            
-            # 保存GIF时不使用固定的transparency=0，让PIL自动处理透明色
-            # disposal设为2表示处理完当前帧后恢复到背景色
-            processed_frames[0].save(
-                img_byte_arr,
-                format='GIF',
-                append_images=processed_frames[1:],
-                save_all=True,
-                duration=durations,
-                loop=0,
-                disposal=2,
-                optimize=False,
-                # 移除固定的transparency参数，让PIL自动检测
-                **({'transparency': None} if hasattr(img, 'info') and 'transparency' in img.info else {})
-            )
-            return img_byte_arr.getvalue()
-        else:
-            # 处理静态图片
-            result_img = _process_single_frame(img, "top")
-            
-            # 保存结果到字节流
-            img_byte_arr = io.BytesIO()
-            result_img.save(img_byte_arr, format='PNG')
-            return img_byte_arr.getvalue()
-    except Exception as e:
-        logger.debug(f"对称上处理失败: {e}")
-        return None
+    return _process_image_symmetric(image_path, "top", image_type)
 
 
 def process_image_symmetric_bottom(image_path: str, image_type: str = None) -> Optional[bytes]:
     """处理图片，将下半部分镜像覆盖到上半部分"""
-    try:
-        img = Image.open(image_path)
-        
-        # 检查是否为GIF且为动画
-        is_gif = image_type and image_type.startswith('gif') and hasattr(img, 'is_animated') and img.is_animated
-        
-        if is_gif:
-            logger.debug(f"处理GIF动画，帧数: {img.n_frames}")
-            # 处理GIF动画
-            frames = []
-            durations = []
-            
-            for frame in ImageSequence.Iterator(img):
-                # 处理每一帧，不再需要预先转换为RGBA，_process_single_frame内部会处理
-                processed_frame = _process_single_frame(frame, "bottom")
-                frames.append(processed_frame)
-                # 获取帧延迟
-                if 'duration' in frame.info:
-                    durations.append(frame.info['duration'])
-                else:
-                    durations.append(100)  # 默认延迟
-            
-            # 保存处理后的GIF
-            img_byte_arr = io.BytesIO()
-            
-            # 确保所有帧都是相同的模式（RGBA）
-            processed_frames = []
-            for frame in frames:
-                # 确保所有帧都是RGBA模式
-                if frame.mode != 'RGBA':
-                    frame = frame.convert('RGBA')
-                processed_frames.append(frame)
-            
-            # 保存GIF时不使用固定的transparency=0，让PIL自动处理透明色
-            # disposal设为2表示处理完当前帧后恢复到背景色
-            processed_frames[0].save(
-                img_byte_arr,
-                format='GIF',
-                append_images=processed_frames[1:],
-                save_all=True,
-                duration=durations,
-                loop=0,
-                disposal=2,
-                optimize=False,
-                # 移除固定的transparency参数，让PIL自动检测
-                **({'transparency': None} if hasattr(img, 'info') and 'transparency' in img.info else {})
-            )
-            return img_byte_arr.getvalue()
-        else:
-            # 处理静态图片
-            result_img = _process_single_frame(img, "bottom")
-            
-            # 保存结果到字节流
-            img_byte_arr = io.BytesIO()
-            result_img.save(img_byte_arr, format='PNG')
-            return img_byte_arr.getvalue()
-    except Exception as e:
-        logger.debug(f"对称下处理失败: {e}")
-        return None
+    return _process_image_symmetric(image_path, "bottom", image_type)
