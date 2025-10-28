@@ -5,82 +5,89 @@ from nonebot.log import logger
 
 
 def _process_single_frame(img: Image.Image, direction: str) -> Image.Image:
-    """处理单帧图像"""
+    """处理单帧图像，正确处理透明度和图像模式"""
+    # 统一转换为RGBA模式以正确处理透明度
+    img_rgba = img.convert('RGBA')
+    
     # 获取图片尺寸
-    width, height = img.size
+    width, height = img_rgba.size
+    
+    # 创建透明背景的新图像
+    result_img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
     
     if direction == "left":
         # 计算中间线
         mid_point = width // 2
         
         # 裁剪左半部分
-        left_half = img.crop((0, 0, mid_point, height))
+        left_half = img_rgba.crop((0, 0, mid_point, height))
         
         # 水平翻转左半部分
         mirrored_left = left_half.transpose(Image.FLIP_LEFT_RIGHT)
         
-        # 创建新图片（与原图片相同大小）
-        result_img = Image.new('RGBA' if img.mode == 'RGBA' else 'RGB', (width, height))
+        # 粘贴左半部分，对于RGBA图像，使用其alpha通道作为遮罩
+        result_img.paste(left_half, (0, 0), left_half)
         
-        # 粘贴左半部分
-        result_img.paste(img, (0, 0))
-        
-        # 粘贴镜像后的左半部分到右半部分
-        result_img.paste(mirrored_left, (mid_point, 0))
+        # 粘贴镜像后的左半部分到右半部分，并使用其alpha通道作为遮罩
+        result_img.paste(mirrored_left, (mid_point, 0), mirrored_left)
     elif direction == "right":
         # 计算中间线
         mid_point = width // 2
         
         # 裁剪右半部分
-        right_half = img.crop((mid_point, 0, width, height))
+        right_half = img_rgba.crop((mid_point, 0, width, height))
         
         # 水平翻转右半部分
         mirrored_right = right_half.transpose(Image.FLIP_LEFT_RIGHT)
         
-        # 创建新图片（与原图片相同大小）
-        result_img = Image.new('RGBA' if img.mode == 'RGBA' else 'RGB', (width, height))
+        # 粘贴右半部分，使用其alpha通道作为遮罩
+        result_img.paste(right_half, (mid_point, 0), right_half)
         
-        # 粘贴右半部分
-        result_img.paste(img, (0, 0))
-        
-        # 粘贴镜像后的右半部分到左半部分
-        result_img.paste(mirrored_right, (0, 0))
+        # 粘贴镜像后的右半部分到左半部分，使用其alpha通道作为遮罩
+        result_img.paste(mirrored_right, (0, 0), mirrored_right)
     elif direction == "top":
         # 计算中间线
         mid_point = height // 2
         
         # 裁剪上半部分
-        top_half = img.crop((0, 0, width, mid_point))
+        top_half = img_rgba.crop((0, 0, width, mid_point))
         
         # 垂直翻转上半部分
         mirrored_top = top_half.transpose(Image.FLIP_TOP_BOTTOM)
         
-        # 创建新图片（与原图片相同大小）
-        result_img = Image.new('RGBA' if img.mode == 'RGBA' else 'RGB', (width, height))
+        # 粘贴上半部分，使用其alpha通道作为遮罩
+        result_img.paste(top_half, (0, 0), top_half)
         
-        # 粘贴上半部分
-        result_img.paste(img, (0, 0))
-        
-        # 粘贴镜像后的上半部分到下半部分
-        result_img.paste(mirrored_top, (0, mid_point))
+        # 粘贴镜像后的上半部分到下半部分，使用其alpha通道作为遮罩
+        result_img.paste(mirrored_top, (0, mid_point), mirrored_top)
     elif direction == "bottom":
         # 计算中间线
         mid_point = height // 2
         
         # 裁剪下半部分
-        bottom_half = img.crop((0, mid_point, width, height))
+        bottom_half = img_rgba.crop((0, mid_point, width, height))
         
         # 垂直翻转下半部分
         mirrored_bottom = bottom_half.transpose(Image.FLIP_TOP_BOTTOM)
         
-        # 创建新图片（与原图片相同大小）
-        result_img = Image.new('RGBA' if img.mode == 'RGBA' else 'RGB', (width, height))
+        # 粘贴下半部分，使用其alpha通道作为遮罩
+        result_img.paste(bottom_half, (0, mid_point), bottom_half)
         
-        # 粘贴下半部分
-        result_img.paste(img, (0, 0))
-        
-        # 粘贴镜像后的下半部分到上半部分
-        result_img.paste(mirrored_bottom, (0, 0))
+        # 粘贴镜像后的下半部分到上半部分，使用其alpha通道作为遮罩
+        result_img.paste(mirrored_bottom, (0, 0), mirrored_bottom)
+    
+    # 如果原图不是RGBA模式，转换回原图模式
+    if img.mode != 'RGBA':
+        # 对于P模式或其他模式，使用白色背景
+        if img.mode == 'P':
+            # 创建白色背景
+            background = Image.new('RGB', result_img.size, (255, 255, 255))
+            # 粘贴RGBA图像到白色背景上
+            background.paste(result_img, mask=result_img.split()[3])  # 使用alpha通道作为遮罩
+            return background.convert(img.mode)
+        else:
+            # 其他模式直接转换
+            return result_img.convert(img.mode)
     
     return result_img
 
@@ -99,8 +106,8 @@ def process_image_symmetric_left(image_path: str, image_type: str = None) -> Opt
             durations = []
             
             for frame in ImageSequence.Iterator(img):
-                # 处理每一帧
-                processed_frame = _process_single_frame(frame.convert('RGBA'), "left")
+                # 处理每一帧，不再需要预先转换为RGBA，_process_single_frame内部会处理
+                processed_frame = _process_single_frame(frame, "left")
                 frames.append(processed_frame)
                 # 获取帧延迟
                 if 'duration' in frame.info:
@@ -110,16 +117,28 @@ def process_image_symmetric_left(image_path: str, image_type: str = None) -> Opt
             
             # 保存处理后的GIF
             img_byte_arr = io.BytesIO()
-            frames[0].save(
+            
+            # 确保所有帧都是相同的模式（RGBA）
+            processed_frames = []
+            for frame in frames:
+                # 确保所有帧都是RGBA模式
+                if frame.mode != 'RGBA':
+                    frame = frame.convert('RGBA')
+                processed_frames.append(frame)
+            
+            # 保存GIF时不使用固定的transparency=0，让PIL自动处理透明色
+            # disposal设为2表示处理完当前帧后恢复到背景色
+            processed_frames[0].save(
                 img_byte_arr,
                 format='GIF',
-                append_images=frames[1:],
+                append_images=processed_frames[1:],
                 save_all=True,
                 duration=durations,
                 loop=0,
                 disposal=2,
-                transparency=0,
-                optimize=False
+                optimize=False,
+                # 移除固定的transparency参数，让PIL自动检测
+                **({'transparency': None} if hasattr(img, 'info') and 'transparency' in img.info else {})
             )
             return img_byte_arr.getvalue()
         else:
@@ -150,8 +169,8 @@ def process_image_symmetric_right(image_path: str, image_type: str = None) -> Op
             durations = []
             
             for frame in ImageSequence.Iterator(img):
-                # 处理每一帧
-                processed_frame = _process_single_frame(frame.convert('RGBA'), "right")
+                # 处理每一帧，不再需要预先转换为RGBA，_process_single_frame内部会处理
+                processed_frame = _process_single_frame(frame, "right")
                 frames.append(processed_frame)
                 # 获取帧延迟
                 if 'duration' in frame.info:
@@ -161,16 +180,28 @@ def process_image_symmetric_right(image_path: str, image_type: str = None) -> Op
             
             # 保存处理后的GIF
             img_byte_arr = io.BytesIO()
-            frames[0].save(
+            
+            # 确保所有帧都是相同的模式（RGBA）
+            processed_frames = []
+            for frame in frames:
+                # 确保所有帧都是RGBA模式
+                if frame.mode != 'RGBA':
+                    frame = frame.convert('RGBA')
+                processed_frames.append(frame)
+            
+            # 保存GIF时不使用固定的transparency=0，让PIL自动处理透明色
+            # disposal设为2表示处理完当前帧后恢复到背景色
+            processed_frames[0].save(
                 img_byte_arr,
                 format='GIF',
-                append_images=frames[1:],
+                append_images=processed_frames[1:],
                 save_all=True,
                 duration=durations,
                 loop=0,
                 disposal=2,
-                transparency=0,
-                optimize=False
+                optimize=False,
+                # 移除固定的transparency参数，让PIL自动检测
+                **({'transparency': None} if hasattr(img, 'info') and 'transparency' in img.info else {})
             )
             return img_byte_arr.getvalue()
         else:
@@ -201,8 +232,8 @@ def process_image_symmetric_top(image_path: str, image_type: str = None) -> Opti
             durations = []
             
             for frame in ImageSequence.Iterator(img):
-                # 处理每一帧
-                processed_frame = _process_single_frame(frame.convert('RGBA'), "top")
+                # 处理每一帧，不再需要预先转换为RGBA，_process_single_frame内部会处理
+                processed_frame = _process_single_frame(frame, "top")
                 frames.append(processed_frame)
                 # 获取帧延迟
                 if 'duration' in frame.info:
@@ -212,16 +243,28 @@ def process_image_symmetric_top(image_path: str, image_type: str = None) -> Opti
             
             # 保存处理后的GIF
             img_byte_arr = io.BytesIO()
-            frames[0].save(
+            
+            # 确保所有帧都是相同的模式（RGBA）
+            processed_frames = []
+            for frame in frames:
+                # 确保所有帧都是RGBA模式
+                if frame.mode != 'RGBA':
+                    frame = frame.convert('RGBA')
+                processed_frames.append(frame)
+            
+            # 保存GIF时不使用固定的transparency=0，让PIL自动处理透明色
+            # disposal设为2表示处理完当前帧后恢复到背景色
+            processed_frames[0].save(
                 img_byte_arr,
                 format='GIF',
-                append_images=frames[1:],
+                append_images=processed_frames[1:],
                 save_all=True,
                 duration=durations,
                 loop=0,
                 disposal=2,
-                transparency=0,
-                optimize=False
+                optimize=False,
+                # 移除固定的transparency参数，让PIL自动检测
+                **({'transparency': None} if hasattr(img, 'info') and 'transparency' in img.info else {})
             )
             return img_byte_arr.getvalue()
         else:
@@ -252,8 +295,8 @@ def process_image_symmetric_bottom(image_path: str, image_type: str = None) -> O
             durations = []
             
             for frame in ImageSequence.Iterator(img):
-                # 处理每一帧
-                processed_frame = _process_single_frame(frame.convert('RGBA'), "bottom")
+                # 处理每一帧，不再需要预先转换为RGBA，_process_single_frame内部会处理
+                processed_frame = _process_single_frame(frame, "bottom")
                 frames.append(processed_frame)
                 # 获取帧延迟
                 if 'duration' in frame.info:
@@ -263,16 +306,28 @@ def process_image_symmetric_bottom(image_path: str, image_type: str = None) -> O
             
             # 保存处理后的GIF
             img_byte_arr = io.BytesIO()
-            frames[0].save(
+            
+            # 确保所有帧都是相同的模式（RGBA）
+            processed_frames = []
+            for frame in frames:
+                # 确保所有帧都是RGBA模式
+                if frame.mode != 'RGBA':
+                    frame = frame.convert('RGBA')
+                processed_frames.append(frame)
+            
+            # 保存GIF时不使用固定的transparency=0，让PIL自动处理透明色
+            # disposal设为2表示处理完当前帧后恢复到背景色
+            processed_frames[0].save(
                 img_byte_arr,
                 format='GIF',
-                append_images=frames[1:],
+                append_images=processed_frames[1:],
                 save_all=True,
                 duration=durations,
                 loop=0,
                 disposal=2,
-                transparency=0,
-                optimize=False
+                optimize=False,
+                # 移除固定的transparency参数，让PIL自动检测
+                **({'transparency': None} if hasattr(img, 'info') and 'transparency' in img.info else {})
             )
             return img_byte_arr.getvalue()
         else:
