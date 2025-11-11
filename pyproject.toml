@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nonebot-plugin-image-symmetry"
-version = "0.1.0"
+version = "0.1.1"
 description = "NoneBot 图像对称处理插件，提供图片上下左右四个方向的对称变换功能"
 authors = ["GT610 <myddz1005@outlook.com>"]
 license = "Apache-2.0"
@@ -16,7 +16,7 @@ nonebot-plugin-alconna = ">=0.50.0, <1.0.0"
 nonebot-plugin-localstore = ">=0.6.0, <1.0.0"
 pillow = ">=9.0.0, <11.0.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 black = "^23.0.0"
 isort = "^5.10.0"
 pytest = "^7.0.0"
