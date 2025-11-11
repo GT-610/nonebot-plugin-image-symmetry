@@ -11,7 +11,7 @@ keywords = ["nonebot", "nonebot2", "plugin", "image-processing"]
 
 [tool.poetry.dependencies]
 python = ">=3.9, <4.0"
-nonebot2 = ">=2.0.0, <3.0.0"
+nonebot2 = ">=2.3.0, <3.0.0"
 nonebot-plugin-alconna = ">=0.50.0, <1.0.0"
 nonebot-plugin-localstore = ">=0.6.0, <1.0.0"
 pillow = ">=9.0.0, <11.0.0"

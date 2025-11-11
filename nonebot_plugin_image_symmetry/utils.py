@@ -1,9 +1,8 @@
 import hashlib
-import imghdr
 import io
 import os
 from PIL import Image
-from nonebot_plugin_localstore import get_cache_dir
+from nonebot_plugin_localstore import get_plugin_cache_dir
 from nonebot.log import logger
 
 
@@ -36,7 +35,7 @@ class SymmetryUtils:
     @staticmethod
     def get_cache_dir() -> str:
         """获取缓存目录"""
-        cache_dir = get_cache_dir(plugin_name="nonebot_plugin_image_symmetry")
+        cache_dir = get_plugin_cache_dir()
         os.makedirs(cache_dir, exist_ok=True)
         return str(cache_dir)
     
@@ -128,33 +127,17 @@ class SymmetryUtils:
         Returns:
             图像类型字符串，如'jpg', 'png', 'gif'等，如果无法识别则返回'unknown'
         """
-        # 首先使用imghdr库尝试识别
-        image_type = imghdr.what(None, h=img_bytes)
-        
-        # 如果imghdr无法识别，尝试使用PIL库
-        if not image_type:
-            try:
-                with Image.open(io.BytesIO(img_bytes)) as img:
-                    # 获取图像格式
-                    format_type = img.format.lower() if img.format else None
-                    # 检查是否为GIF动画
-                    if format_type == 'gif' and getattr(img, 'is_animated', False):
-                        return 'gif_animated'
-                    return format_type
-            except Exception as e:
-                logger.debug(f"PIL识别图像格式失败: {e}")
-                return 'unknown'
-                
-        # 检查是否为GIF动画（使用PIL进行二次确认）
-        if image_type == 'gif':
-            try:
-                with Image.open(io.BytesIO(img_bytes)) as img:
-                    if getattr(img, 'is_animated', False):
-                        return 'gif_animated'
-            except Exception:
-                pass
-                
-        return image_type
+        try:
+            with Image.open(io.BytesIO(img_bytes)) as img:
+                # 获取图像格式
+                format_type = img.format.lower() if img.format else None
+                # 检查是否为GIF动画
+                if format_type == 'gif' and getattr(img, 'is_animated', False):
+                    return 'gif_animated'
+                return format_type
+        except Exception as e:
+            logger.debug(f"PIL识别图像格式失败: {e}")
+            return 'unknown'
     
     @staticmethod
     def bytes_to_temp_file(img_bytes: bytes) -> tuple:

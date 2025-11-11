@@ -7,6 +7,7 @@ from nonebot.utils import run_sync
 
 # 引入 nonebot_plugin_alconna 相关组件
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_localstore")
 from nonebot_plugin_alconna import (
     AlcMatches,
     Alconna,
@@ -149,14 +150,14 @@ def help_cmd():
         help_text = "图像对称处理插件使用说明（记得加前缀）：\n1. 直接发送：命令 + 图片\n2. 回复处理：回复图片消息 + 命令\n\n支持的命令：\n- 对称/对称左：将图片左半部分镜像到右半部分\n- 对称右：将图片右半部分镜像到左半部分\n- 对称上：将图片上半部分镜像到下半部分\n- 对称下：将图片下半部分镜像到上半部分\n\n例如：发送'对称左'加上一张图片，或回复一张图片说'对称上'"
         await UniMessage.text(help_text).send()
 
+# 在插件加载时创建响应器
+create_matchers()
+help_cmd()
+
 # 初始化插件
 @driver.on_startup
 async def _startup():
     """插件启动时的初始化操作"""
     # 初始化目录结构（包括before和after子目录）
     SymmetryUtils.initialize_directories()
-    # 创建命令匹配器
-    create_matchers()
-    # 创建帮助命令
-    help_cmd()
     logger.info("图像对称处理插件已启动")
