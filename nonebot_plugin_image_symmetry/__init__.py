@@ -87,14 +87,8 @@ def create_matcher(command: Command):
                 image_hash = hashlib.md5(img_bytes).hexdigest()
                 logger.debug(f"获取图片成功，哈希值: {image_hash}")
                 
-                # 将字节数据保存为临时文件
-                temp_path, image_type = SymmetryUtils.bytes_to_temp_file(img_bytes)
-                if not temp_path:
-                    logger.error("保存图片失败")
-                    await matcher.finish("保存图片失败，请重试")
-                    return
-                
-                logger.debug(f"图片已保存至: {temp_path}")
+                # 识别图片类型
+                image_type = SymmetryUtils.identify_image_type(img_bytes)
                 
                 # 映射命令到对应的对称方向
                 direction_map = {
@@ -106,28 +100,63 @@ def create_matcher(command: Command):
                 }
                 direction = direction_map.get(main_keyword, "unknown")
                 
-                # 异步执行图像处理
-                logger.debug(f"开始处理图片，方向: {direction}")
-                processed_bytes = await run_sync(command.func)(temp_path, image_type)
-                
-                if not processed_bytes:
-                    logger.error("图像处理失败，返回空数据")
-                    await matcher.finish("图像处理失败，请重试")
-                
-                # 保存处理后的图片并管理缓存
-                output_path = SymmetryUtils.save_processed_image(image_hash, direction, processed_bytes, image_type)
-                if not output_path:
-                    logger.error("保存处理后图片失败")
-                    await matcher.finish("保存处理后图片失败，请重试")
+                # 根据模式选择处理方式
+                if SymmetryUtils.is_cacheless_mode():
+                    # 无缓存模式：直接在内存中处理
+                    logger.debug(f"使用无缓存模式处理图片，方向: {direction}")
+                    
+                    # 异步执行图像处理（直接传入字节数据）
+                    processed_bytes = await run_sync(command.func)(
+                        file_path=None,
+                        img_bytes=img_bytes,
+                        image_type=image_type
+                    )
+                    
+                    if not processed_bytes:
+                        logger.error("图像处理失败，返回空数据")
+                        await matcher.finish("图像处理失败，请重试")
+                    
+                    logger.debug(f"处理后图片大小: {len(processed_bytes)} 字节")
+                    
+                    # 直接发送字节数据
+                    await UniMessage.image(raw=processed_bytes).send()
                     return
-                
-                logger.debug(f"处理后图片已保存至: {output_path}")
-                logger.debug(f"处理后图片大小: {len(processed_bytes)} 字节")
-                
-                # 发送处理后的图片
-                logger.debug(f"准备发送处理后的图片: {output_path}")
-                await UniMessage.image(path=output_path).send()
-                return
+                else:
+                    # 缓存模式：保存到文件后处理
+                    logger.debug(f"使用缓存模式处理图片，方向: {direction}")
+                    
+                    # 将字节数据保存为临时文件
+                    temp_path, _ = SymmetryUtils.bytes_to_temp_file(img_bytes)
+                    if not temp_path:
+                        logger.error("保存图片失败")
+                        await matcher.finish("保存图片失败，请重试")
+                        return
+                    
+                    logger.debug(f"图片已保存至: {temp_path}")
+                    
+                    # 异步执行图像处理
+                    processed_bytes = await run_sync(command.func)(
+                        file_path=temp_path,
+                        image_type=image_type
+                    )
+                    
+                    if not processed_bytes:
+                        logger.error("图像处理失败，返回空数据")
+                        await matcher.finish("图像处理失败，请重试")
+                    
+                    # 保存处理后的图片并管理缓存
+                    output_path = SymmetryUtils.save_processed_image(image_hash, direction, processed_bytes, image_type)
+                    if not output_path:
+                        logger.error("保存处理后图片失败")
+                        await matcher.finish("保存处理后图片失败，请重试")
+                        return
+                    
+                    logger.debug(f"处理后图片已保存至: {output_path}")
+                    logger.debug(f"处理后图片大小: {len(processed_bytes)} 字节")
+                    
+                    # 发送处理后的图片
+                    await UniMessage.image(path=output_path).send()
+                    return
             
         except Exception as e:
             # 捕获所有异常并记录错误日志
@@ -148,7 +177,7 @@ def help_cmd():
     @help_matcher.handle()
     async def handle_help():
         # 帮助文本内容，说明插件使用方法和支持的命令
-        help_text = "图像对称处理插件使用说明（记得加前缀）：\n1. 直接发送：命令 + 图片\n2. 回复处理：回复图片消息 + 命令\n\n支持的命令：\n- 对称/对称左：将图片左半部分镜像到右半部分\n- 对称右：将图片右半部分镜像到左半部分\n- 对称上：将图片上半部分镜像到下半部分\n- 对称下：将图片下半部分镜像到上半部分\n\n例如：发送'对称左'加上一张图片，或回复一张图片说'对称上'"
+        help_text = "图像对称处理插件使用说明（记得加前缀）：\n1. 直接发送：命令 + 图片\n2. 回复处理：回复图片消息 + 命令\n\n支持的命令：\n- 对称/对称左：将图片左半部分镜像到右半部分\n- 对称右：将图片右半部分镜像到左半部分\n- 对称上：将图片上半部分镜像到下半部分\n- 对称下：将图片下半部分镜像到上半部分\n\n例如：发送'对称左'加上一张图片，或回复一张图片说'对称上'\n\n插件支持两种运行模式：\n1. 缓存模式（默认）：会缓存原始图片和处理后的图片\n   缓存数量可通过环境变量 IMAGE_SYMMETRY_MAX_CACHE 控制，默认100张\n2. 无缓存模式：图片完全在内存中处理，不保存到本地\n   可通过环境变量 CACHELESS=true 启用无缓存模式"  
         await UniMessage.text(help_text).send()
 
 # 在插件加载时创建所有命令匹配器和帮助命令
@@ -162,3 +191,7 @@ async def _startup():
     # 初始化插件所需的目录结构
     SymmetryUtils.initialize_directories()
     logger.info("图像对称处理插件已启动")
+    if SymmetryUtils.is_cacheless_mode():
+        logger.info("当前运行在无缓存模式下")
+    else:
+        logger.info("当前运行在缓存模式下")

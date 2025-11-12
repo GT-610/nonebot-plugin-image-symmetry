@@ -22,70 +22,74 @@ class Command:
     args: Args  # 参数定义，指定命令需要的参数类型
     func: Callable  # 处理函数，执行对应图像处理操作
 
-# 定义处理函数，直接处理字节流并返回结果
-def symmetric_left_process(temp_path: str, image_type: str = None) -> Optional[bytes]:
+# 定义处理函数，支持缓存和无缓存两种模式
+def symmetric_left_process(file_path: str = None, img_bytes: bytes = None, image_type: str = None) -> Optional[bytes]:
     """执行图像左侧对称处理
     
     Args:
-        temp_path: 临时图像文件路径
-        image_type: 图像类型，可选参数
+        file_path: 临时图像文件路径（缓存模式）
+        img_bytes: 图像字节数据（无缓存模式）
+        image_type: 图像类型
     
     Returns:
         处理后的图像字节流，如果处理失败返回None
     """
     try:
-        return process_image_symmetric_left(temp_path, image_type)
+        return process_image_symmetric_left(file_path, img_bytes, image_type)
     except Exception as e:
         logger.debug(f"图像左侧对称处理失败: {e}")
         return None
 
 
-def symmetric_right_process(temp_path: str, image_type: str = None) -> Optional[bytes]:
+def symmetric_right_process(file_path: str = None, img_bytes: bytes = None, image_type: str = None) -> Optional[bytes]:
     """执行图像右侧对称处理
     
     Args:
-        temp_path: 临时图像文件路径
-        image_type: 图像类型，可选参数
+        file_path: 临时图像文件路径（缓存模式）
+        img_bytes: 图像字节数据（无缓存模式）
+        image_type: 图像类型
     
     Returns:
         处理后的图像字节流，如果处理失败返回None
     """
     try:
-        return process_image_symmetric_right(temp_path, image_type)
+        return process_image_symmetric_right(file_path, img_bytes, image_type)
     except Exception as e:
         logger.debug(f"图像右侧对称处理失败: {e}")
         return None
 
 
-def symmetric_top_process(temp_path: str, image_type: str = None) -> Optional[bytes]:
+def symmetric_top_process(file_path: str = None, img_bytes: bytes = None, image_type: str = None) -> Optional[bytes]:
     """执行图像上方对称处理
     
     Args:
-        temp_path: 临时图像文件路径
-        image_type: 图像类型，可选参数
+        file_path: 临时图像文件路径（缓存模式）
+        img_bytes: 图像字节数据（无缓存模式）
+        image_type: 图像类型
     
     Returns:
         处理后的图像字节流，如果处理失败返回None
     """
     try:
-        return process_image_symmetric_top(temp_path, image_type)
+        return process_image_symmetric_top(file_path, img_bytes, image_type)
     except Exception as e:
         logger.debug(f"图像上方对称处理失败: {e}")
         return None
 
 
-def symmetric_bottom_process(temp_path: str, image_type: str = None) -> Optional[bytes]:
+def symmetric_bottom_process(file_path: str = None, img_bytes: bytes = None, image_type: str = None) -> Optional[bytes]:
     """执行图像下方对称处理
     
     Args:
-        temp_path: 临时图像文件路径
-        image_type: 图像类型，可选参数
+        file_path: 临时图像文件路径（缓存模式）
+        img_bytes: 图像字节数据（无缓存模式）
+        image_type: 图像类型
     
     Returns:
         处理后的图像字节流，如果处理失败返回None
     """
     try:
-        return process_image_symmetric_bottom(temp_path, image_type)
+        return process_image_symmetric_bottom(file_path, img_bytes, image_type)
     except Exception as e:
         logger.debug(f"图像下方对称处理失败: {e}")
         return None

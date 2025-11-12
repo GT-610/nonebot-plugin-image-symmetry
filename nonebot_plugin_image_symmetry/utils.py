@@ -36,6 +36,30 @@ class SymmetryUtils:
     # 两个目录总计的最大缓存图片数量
     MAX_TOTAL_CACHE_SIZE = _get_max_cache_size()
     
+    # 无缓存模式开关，通过环境变量控制，默认关闭
+    @staticmethod
+    def _get_cacheless_mode():
+        """从环境变量获取无缓存模式设置
+        
+        Returns:
+            bool: True表示启用无缓存模式，False表示使用缓存模式
+        """
+        cacheless = os.environ.get("CACHELESS", "false").lower() == "true"
+        logger.debug(f"无缓存模式设置: {'启用' if cacheless else '禁用'}")
+        return cacheless
+    
+    # 无缓存模式状态
+    CACHELESS_MODE = _get_cacheless_mode()
+    
+    @staticmethod
+    def is_cacheless_mode() -> bool:
+        """检查是否启用无缓存模式
+        
+        Returns:
+            bool: True表示启用无缓存模式，False表示使用缓存模式
+        """
+        return SymmetryUtils.CACHELESS_MODE
+    
     @staticmethod
     def get_cache_dir() -> str:
         """获取插件的缓存根目录
@@ -74,12 +98,16 @@ class SymmetryUtils:
     @staticmethod
     def initialize_directories() -> None:
         """初始化所有必要的目录结构，确保缓存目录存在"""
-        try:
-            before_dir = SymmetryUtils.get_before_cache_dir()
-            after_dir = SymmetryUtils.get_after_cache_dir()
-            logger.info(f"成功初始化目录结构\nbefore目录: {before_dir}\nafter目录: {after_dir}")
-        except Exception as e:
-            logger.error(f"初始化目录结构失败: {e}")
+        # 只在非无缓存模式下初始化目录
+        if not SymmetryUtils.is_cacheless_mode():
+            try:
+                before_dir = SymmetryUtils.get_before_cache_dir()
+                after_dir = SymmetryUtils.get_after_cache_dir()
+                logger.info(f"成功初始化目录结构\nbefore目录: {before_dir}\nafter目录: {after_dir}")
+            except Exception as e:
+                logger.error(f"初始化目录结构失败: {e}")
+        else:
+            logger.info("已启用无缓存模式，跳过目录初始化")
     
     @staticmethod
     def cleanup_global_cache(max_size: int = MAX_TOTAL_CACHE_SIZE) -> None:
@@ -88,50 +116,52 @@ class SymmetryUtils:
         Args:
             max_size: 两个目录总计的最大缓存文件数量
         """
-        try:
-            # 获取两个目录的路径
-            before_dir = SymmetryUtils.get_before_cache_dir()
-            after_dir = SymmetryUtils.get_after_cache_dir()
-            
-            # 确保目录存在
-            os.makedirs(before_dir, exist_ok=True)
-            os.makedirs(after_dir, exist_ok=True)
-            
-            # 获取两个目录中所有的jpg文件及其修改时间
-            all_files = []
-            
-            # 检查before目录中的图片文件
-            if os.path.exists(before_dir):
-                for filename in os.listdir(before_dir):
-                    if filename.lower().endswith('.jpg'):
-                        file_path = os.path.join(before_dir, filename)
-                        if os.path.isfile(file_path):
-                            mod_time = os.path.getmtime(file_path)
-                            all_files.append((mod_time, file_path))
-            
-            # 检查after目录中的图片文件
-            if os.path.exists(after_dir):
-                for filename in os.listdir(after_dir):
-                    if filename.lower().endswith('.jpg'):
-                        file_path = os.path.join(after_dir, filename)
-                        if os.path.isfile(file_path):
-                            mod_time = os.path.getmtime(file_path)
-                            all_files.append((mod_time, file_path))
-            
-            # 按修改时间排序（旧的在前）
-            all_files.sort(key=lambda x: x[0])
-            
-            # 如果总文件数量超过限制，删除最旧的文件
-            if len(all_files) >= max_size:
-                files_to_delete = len(all_files) - max_size + 1  # +1表示达到限制时也删除
-                for _, file_path in all_files[:files_to_delete]:
-                    try:
-                        os.remove(file_path)
-                        logger.debug(f"全局缓存清理: 删除旧文件 {os.path.basename(file_path)} 来自 {os.path.dirname(file_path)}")
-                    except Exception as e:
-                        logger.debug(f"删除文件失败 {file_path}: {e}")
-        except Exception as e:
-            logger.error(f"全局缓存清理失败: {e}")
+        # 只在非无缓存模式下执行缓存清理
+        if not SymmetryUtils.is_cacheless_mode():
+            try:
+                # 获取两个目录的路径
+                before_dir = SymmetryUtils.get_before_cache_dir()
+                after_dir = SymmetryUtils.get_after_cache_dir()
+                
+                # 确保目录存在
+                os.makedirs(before_dir, exist_ok=True)
+                os.makedirs(after_dir, exist_ok=True)
+                
+                # 获取两个目录中所有的jpg文件及其修改时间
+                all_files = []
+                
+                # 检查before目录中的图片文件
+                if os.path.exists(before_dir):
+                    for filename in os.listdir(before_dir):
+                        if filename.lower().endswith('.jpg'):
+                            file_path = os.path.join(before_dir, filename)
+                            if os.path.isfile(file_path):
+                                mod_time = os.path.getmtime(file_path)
+                                all_files.append((mod_time, file_path))
+                
+                # 检查after目录中的图片文件
+                if os.path.exists(after_dir):
+                    for filename in os.listdir(after_dir):
+                        if filename.lower().endswith('.jpg'):
+                            file_path = os.path.join(after_dir, filename)
+                            if os.path.isfile(file_path):
+                                mod_time = os.path.getmtime(file_path)
+                                all_files.append((mod_time, file_path))
+                
+                # 按修改时间排序（旧的在前）
+                all_files.sort(key=lambda x: x[0])
+                
+                # 如果总文件数量超过限制，删除最旧的文件
+                if len(all_files) >= max_size:
+                    files_to_delete = len(all_files) - max_size + 1  # +1表示达到限制时也删除
+                    for _, file_path in all_files[:files_to_delete]:
+                        try:
+                            os.remove(file_path)
+                            logger.debug(f"全局缓存清理: 删除旧文件 {os.path.basename(file_path)} 来自 {os.path.dirname(file_path)}")
+                        except Exception as e:
+                            logger.debug(f"删除文件失败 {file_path}: {e}")
+            except Exception as e:
+                logger.error(f"全局缓存清理失败: {e}")
     
     @staticmethod
     def identify_image_type(img_bytes: bytes) -> str:
@@ -165,12 +195,18 @@ class SymmetryUtils:
         Returns:
             tuple: (临时文件路径, 图像类型)，如果处理失败返回(None, None)
         """
-        # 先清理全局缓存（控制两个目录的总数量）
-        SymmetryUtils.cleanup_global_cache()
-        
         # 识别图像类型
         image_type = SymmetryUtils.identify_image_type(img_bytes)
         logger.debug(f"识别到的图像类型: {image_type}")
+        
+        # 在无缓存模式下，直接返回None路径和识别到的类型
+        if SymmetryUtils.is_cacheless_mode():
+            logger.debug("无缓存模式: 跳过临时文件保存")
+            return None, image_type
+        
+        # 缓存模式下保存文件
+        # 先清理全局缓存（控制两个目录的总数量）
+        SymmetryUtils.cleanup_global_cache()
         
         # 使用before目录保存原始图片
         before_dir = SymmetryUtils.get_before_cache_dir()
@@ -185,7 +221,7 @@ class SymmetryUtils:
             return temp_path, image_type
         except Exception as e:
             logger.error(f"创建临时文件失败: {e}")
-            return None, None
+            return None, image_type  # 即使失败也返回识别到的类型
     
     @staticmethod
     def save_processed_image(image_hash: str, direction: str, processed_bytes: bytes, image_type: str = None) -> str:
@@ -200,6 +236,12 @@ class SymmetryUtils:
         Returns:
             str: 保存后的文件路径，如果保存失败返回None
         """
+        # 在无缓存模式下，直接返回None路径
+        if SymmetryUtils.is_cacheless_mode():
+            logger.debug("无缓存模式: 跳过处理后文件保存")
+            return None
+        
+        # 缓存模式下保存文件
         # 先清理全局缓存（控制两个目录的总数量）
         SymmetryUtils.cleanup_global_cache()
         
@@ -225,4 +267,60 @@ class SymmetryUtils:
             return output_path
         except Exception as e:
             logger.error(f"保存处理后图片失败: {e}")
+            return None
+    
+    @staticmethod
+    def bytes_to_image(img_bytes: bytes) -> Image.Image:
+        """将字节数据转换为PIL图像对象
+        
+        Args:
+            img_bytes: 图像字节数据
+            
+        Returns:
+            Image.Image: PIL图像对象，如果转换失败则返回None
+        """
+        try:
+            img_stream = io.BytesIO(img_bytes)
+            img = Image.open(img_stream)
+            return img
+        except Exception as e:
+            logger.error(f"字节数据转换为图像失败: {e}")
+            return None
+    
+    @staticmethod
+    def image_to_bytes(img: Image.Image, image_type: str = None) -> bytes:
+        """将PIL图像对象转换为字节数据
+        
+        Args:
+            img: PIL图像对象
+            image_type: 图像类型，如果为None则使用图像原始格式
+            
+        Returns:
+            bytes: 图像字节数据，如果转换失败则返回None
+        """
+        try:
+            img_stream = io.BytesIO()
+            
+            # 确定保存格式
+            format = image_type.upper() if image_type else img.format or 'PNG'
+            
+            # 对于JPEG和其他非透明格式，需要确保没有透明度通道
+            if format == 'JPEG' and img.mode == 'RGBA':
+                # 创建白色背景
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                # 粘贴RGBA图像到白色背景上
+                background.paste(img, mask=img.split()[3])  # 使用alpha通道作为遮罩
+                img = background
+                
+            # 保留图像的EXIF信息
+            exif = img.info.get('exif')
+            if exif:
+                img.save(img_stream, format=format, exif=exif)
+            else:
+                img.save(img_stream, format=format)
+            
+            img_bytes = img_stream.getvalue()
+            return img_bytes
+        except Exception as e:
+            logger.error(f"图像转换为字节数据失败: {e}")
             return None
