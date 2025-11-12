@@ -7,12 +7,16 @@ from nonebot.log import logger
 
 
 class SymmetryUtils:
-    """对称处理工具类"""
+    """对称处理工具类，提供图像缓存管理和文件操作相关的工具方法"""
     
     # 从环境变量读取最大缓存数量，默认为100，范围[5, 9999]
     @staticmethod
     def _get_max_cache_size():
-        """从环境变量获取最大缓存数量，并进行范围检查"""
+        """从环境变量获取最大缓存数量，并进行范围检查
+        
+        Returns:
+            int: 有效的最大缓存数量，确保在[5, 9999]范围内
+        """
         try:
             env_value = os.environ.get("IMAGE_SYMMETRY_MAX_CACHE", "100")
             max_size = int(env_value)
@@ -34,14 +38,22 @@ class SymmetryUtils:
     
     @staticmethod
     def get_cache_dir() -> str:
-        """获取缓存目录"""
+        """获取插件的缓存根目录
+        
+        Returns:
+            str: 缓存目录的绝对路径
+        """
         cache_dir = get_plugin_cache_dir()
         os.makedirs(cache_dir, exist_ok=True)
         return str(cache_dir)
     
     @staticmethod
     def get_before_cache_dir() -> str:
-        """获取原始图片缓存目录"""
+        """获取原始图片缓存目录
+        
+        Returns:
+            str: 原始图片缓存目录的绝对路径
+        """
         cache_dir = SymmetryUtils.get_cache_dir()
         before_dir = os.path.join(cache_dir, "before")
         os.makedirs(before_dir, exist_ok=True)
@@ -49,7 +61,11 @@ class SymmetryUtils:
     
     @staticmethod
     def get_after_cache_dir() -> str:
-        """获取处理后图片缓存目录"""
+        """获取处理后图片缓存目录
+        
+        Returns:
+            str: 处理后图片缓存目录的绝对路径
+        """
         cache_dir = SymmetryUtils.get_cache_dir()
         after_dir = os.path.join(cache_dir, "after")
         os.makedirs(after_dir, exist_ok=True)
@@ -57,7 +73,7 @@ class SymmetryUtils:
     
     @staticmethod
     def initialize_directories() -> None:
-        """初始化所有必要的目录"""
+        """初始化所有必要的目录结构，确保缓存目录存在"""
         try:
             before_dir = SymmetryUtils.get_before_cache_dir()
             after_dir = SymmetryUtils.get_after_cache_dir()
@@ -84,7 +100,7 @@ class SymmetryUtils:
             # 获取两个目录中所有的jpg文件及其修改时间
             all_files = []
             
-            # 检查before目录
+            # 检查before目录中的图片文件
             if os.path.exists(before_dir):
                 for filename in os.listdir(before_dir):
                     if filename.lower().endswith('.jpg'):
@@ -93,7 +109,7 @@ class SymmetryUtils:
                             mod_time = os.path.getmtime(file_path)
                             all_files.append((mod_time, file_path))
             
-            # 检查after目录
+            # 检查after目录中的图片文件
             if os.path.exists(after_dir):
                 for filename in os.listdir(after_dir):
                     if filename.lower().endswith('.jpg'):
@@ -142,7 +158,12 @@ class SymmetryUtils:
     @staticmethod
     def bytes_to_temp_file(img_bytes: bytes) -> tuple:
         """将字节流转换为临时文件并返回路径和图像类型
-        在保存前先检查并清理全局缓存
+        
+        Args:
+            img_bytes: 图像字节数据
+            
+        Returns:
+            tuple: (临时文件路径, 图像类型)，如果处理失败返回(None, None)
         """
         # 先清理全局缓存（控制两个目录的总数量）
         SymmetryUtils.cleanup_global_cache()
@@ -166,20 +187,18 @@ class SymmetryUtils:
             logger.error(f"创建临时文件失败: {e}")
             return None, None
     
-
-    
     @staticmethod
     def save_processed_image(image_hash: str, direction: str, processed_bytes: bytes, image_type: str = None) -> str:
         """保存处理后的图片到after目录，并自动清理全局缓存
         
         Args:
             image_hash: 图片的哈希标识符
-            direction: 处理方向
+            direction: 处理方向（left、right、top、bottom）
             processed_bytes: 处理后的图片字节数据
             image_type: 图像类型，用于确定保存格式
             
         Returns:
-            保存后的文件路径
+            str: 保存后的文件路径，如果保存失败返回None
         """
         # 先清理全局缓存（控制两个目录的总数量）
         SymmetryUtils.cleanup_global_cache()
@@ -196,6 +215,7 @@ class SymmetryUtils:
         else:
             extension = '.jpg'  # 默认使用jpg
         
+        # 生成唯一的输出文件名
         output_filename = f"{image_hash}_{direction}{extension}"
         output_path = os.path.join(after_dir, output_filename)
         
