@@ -2,34 +2,39 @@ import hashlib
 import io
 import os
 from PIL import Image
+from nonebot import get_driver
 from nonebot_plugin_localstore import get_plugin_cache_dir
 from nonebot.log import logger
+
+# 获取NoneBot驱动实例，用于读取配置
+driver = get_driver()
 
 
 class SymmetryUtils:
     """对称处理工具类，提供图像缓存管理和文件操作相关的工具方法"""
     
-    # 从环境变量读取最大缓存数量，默认为100，范围[5, 9999]
+    # 从NoneBot配置获取最大缓存数量，默认为100，范围[5, 9999]
     @staticmethod
     def _get_max_cache_size():
-        """从环境变量获取最大缓存数量，并进行范围检查
+        """从NoneBot配置获取最大缓存数量，并进行范围检查
         
         Returns:
             int: 有效的最大缓存数量，确保在[5, 9999]范围内
         """
         try:
-            env_value = os.environ.get("IMAGE_SYMMETRY_MAX_CACHE", "100")
-            max_size = int(env_value)
+            # 从driver.config获取配置，这是NoneBot推荐的方式
+            # 如果配置不存在，默认使用100
+            max_size = getattr(driver.config, "image_symmetry_max_cache", 100)
             # 确保值在有效范围内
             if 5 <= max_size <= 9999:
-                logger.debug(f"使用最大缓存图片数量: {max_size} (从环境变量获取)")
+                logger.debug(f"使用最大缓存图片数量: {max_size} (从NoneBot配置获取)")
                 return max_size
             else:
-                logger.warning(f"环境变量IMAGE_SYMMETRY_MAX_CACHE值{max_size}超出范围[5, 9999]，使用默认值100")
+                logger.warning(f"配置image_symmetry_max_cache值{max_size}超出范围[5, 9999]，使用默认值100")
                 logger.debug(f"使用最大缓存图片数量: 100 (默认值)")
                 return 100
-        except ValueError:
-            logger.warning(f"环境变量IMAGE_SYMMETRY_MAX_CACHE值'{env_value}'无效，使用默认值100")
+        except (ValueError, TypeError):
+            logger.warning(f"配置image_symmetry_max_cache值无效，使用默认值100")
             logger.debug(f"使用最大缓存图片数量: 100 (默认值)")
             return 100
     
