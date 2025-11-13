@@ -23,7 +23,7 @@ from .utils import SymmetryUtils
 
 # 定义插件元数据
 __plugin_meta__ = PluginMetadata(
-    name="图像对称处理",
+    name="图像对称",
     description="提供图像上下左右四个方向的对称变换功能",
     usage="发送'对称左'/'对称右'/'对称上'/'对称下'或简写'对称'（默认为左对称）加上图片，或者回复图片消息加上对应命令",
     type="application",
@@ -73,22 +73,30 @@ def create_matcher(command: Command):
                 image_info = f"命令参数图片 - URL: {getattr(img, 'url', 'N/A')}"
                 logger.debug(f"获取图片: {image_info}")
                 
+                # 记录下载图片的信息
+                logger.info(f"开始处理图片: URL: {getattr(img, 'url', 'N/A')}")
+                
                 # 下载图片字节数据
-                img_bytes = await image_fetch(event, bot, state, img)
-                if not img_bytes:
-                    logger.error("图片下载失败: 返回空数据")
-                    await matcher.finish("图片下载失败，请重试")
-                    return
-                
-                logger.debug(f"成功下载图片，大小: {len(img_bytes)} 字节")
-                
-                # 计算图片哈希值用于标识
-                import hashlib
-                image_hash = hashlib.md5(img_bytes).hexdigest()
-                logger.debug(f"获取图片成功，哈希值: {image_hash}")
+                try:
+                    img_bytes = await image_fetch(event, bot, state, img)
+                    if not img_bytes:
+                        logger.error("图片下载失败: 返回空数据")
+                        await matcher.finish("图片下载失败，请重试")
+                        return
+                    
+                    logger.debug(f"成功下载图片，大小: {len(img_bytes)} 字节")
+                    
+                    # 计算图片哈希值用于标识
+                    import hashlib
+                    image_hash = hashlib.md5(img_bytes).hexdigest()
+                    logger.debug(f"获取图片成功，哈希值: {image_hash}")
+                except Exception as e:
+                    logger.error(f"下载图片异常: {type(e).__name__}: {e}")
+                    await matcher.finish(f"图片处理异常: {str(e)}")
                 
                 # 识别图片类型
                 image_type = SymmetryUtils.identify_image_type(img_bytes)
+                logger.debug(f"检测到图片类型: {image_type}")
                 
                 # 映射命令到对应的对称方向
                 direction_map = {
@@ -112,17 +120,17 @@ def create_matcher(command: Command):
                         image_type=image_type
                     )
                     
-                    # 解包返回的元组 (processed_bytes, is_bytes)
-                    processed_bytes, _ = result
+                    # 解包返回的元组 (processed_data, is_bytes)
+                    processed_data, _ = result
                     
-                    if not processed_bytes:
+                    if not processed_data:
                         logger.error("图像处理失败，返回空数据")
                         await matcher.finish("图像处理失败，请重试")
                     
-                    logger.debug(f"处理后图片大小: {len(processed_bytes)} 字节")
+                    logger.debug(f"处理后图片大小: {len(processed_data)} 字节")
                     
                     # 直接发送字节数据
-                    await UniMessage.image(raw=processed_bytes).send()
+                    await UniMessage.image(raw=processed_data).send()
                     return
                 else:
                     # 缓存模式：保存到文件后处理
@@ -150,19 +158,17 @@ def create_matcher(command: Command):
                         logger.error("图像处理失败，返回空数据")
                         await matcher.finish("图像处理失败，请重试")
                     
-                    # 缓存模式下，处理函数已经返回保存的文件路径
-                    output_path = processed_path
-                    
-                    logger.debug(f"处理后图片已保存至: {output_path}")
+                    logger.debug(f"处理后图片已保存至: {processed_path}")
                     
                     # 发送处理后的图片
-                    await UniMessage.image(path=output_path).send()
+                    await UniMessage.image(path=processed_path).send()
                     return
             
         except Exception as e:
             # 捕获所有异常并记录错误日志
-            logger.error(f"处理命令时发生错误: {e}")
-            raise
+            logger.error(f"处理命令时发生错误: {type(e).__name__}: {e}")
+            # 向用户发送友好的错误消息
+            await matcher.finish(f"处理失败：{str(e)}")
 
 def create_matchers():
     """为所有定义的命令创建对应的命令匹配器"""
