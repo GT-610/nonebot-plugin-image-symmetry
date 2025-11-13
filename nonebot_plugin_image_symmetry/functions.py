@@ -1,7 +1,11 @@
 import io
-from typing import Optional, List, Tuple
+import os
+import hashlib
+from typing import Optional, List, Tuple, Union
 from PIL import Image, ImageSequence
 from nonebot.log import logger
+
+from .utils import SymmetryUtils
 
 
 def _process_single_frame(img: Image.Image, direction: str) -> Image.Image:
@@ -165,20 +169,23 @@ def _save_processed_gif(frames: List[Image.Image], durations: List[int], origina
     return img_byte_arr
 
 
-def _process_image_symmetric(image_path: str, direction: str, image_type: str = None) -> Optional[bytes]:
-    """通用图像对称处理函数，根据图像类型（静态或GIF动画）进行不同处理
+def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_type: Optional[str] = None) -> Optional[bytes]:
+    """从字节数据处理图像对称变换（无缓存模式）
     
     Args:
-        image_path: 图像文件路径
+        img_bytes: 输入图像字节数据
         direction: 对称方向，可选值为'left'、'right'、'top'、'bottom'
-        image_type: 图像类型，可选参数，用于判断是否为GIF
+        image_type: 图像类型，如果为None则自动识别
     
     Returns:
-        处理后的图像字节数据，如果处理失败返回None
+        处理后图像的字节数据，如果处理失败返回None
     """
     try:
-        # 打开图像文件
-        img = Image.open(image_path)
+        # 将字节数据转换为图像对象
+        img = SymmetryUtils.bytes_to_image(img_bytes)
+        if img is None:
+            logger.error("无法将字节数据转换为图像")
+            return None
         
         # 检查是否为GIF且为动画
         is_gif = image_type and image_type.startswith('gif') and hasattr(img, 'is_animated') and img.is_animated
@@ -189,17 +196,124 @@ def _process_image_symmetric(image_path: str, direction: str, image_type: str = 
             frames, durations = _process_gif_frames(img, direction)
             
             # 保存处理后的GIF
-            img_byte_arr = _save_processed_gif(frames, durations, img)
-            return img_byte_arr.getvalue()
+            output_stream = io.BytesIO()
+            
+            # 确保所有帧都是相同的模式（RGBA）以保证透明度一致性
+            processed_frames = []
+            for frame in frames:
+                if frame.mode != 'RGBA':
+                    frame = frame.convert('RGBA')
+                processed_frames.append(frame)
+            
+            # 准备GIF保存参数
+            gif_params = {
+                'format': 'GIF',
+                'append_images': processed_frames[1:],
+                'save_all': True,
+                'duration': durations,
+                'loop': 0,
+                'disposal': 2,
+                'optimize': False
+            }
+            
+            # 只在原始图像有透明色信息时添加transparency参数
+            if hasattr(img, 'info') and 'transparency' in img.info:
+                gif_params['transparency'] = img.info['transparency']
+            
+            # 保存GIF动画
+            processed_frames[0].save(output_stream, **gif_params)
+            return output_stream.getvalue()
+        else:
+            # 处理静态图像
+            result_img = _process_single_frame(img, direction)
+            
+            # 转换回字节数据
+            return SymmetryUtils.image_to_bytes(result_img, image_type)
+    except Exception as e:
+        logger.error(f"从字节数据处理图像对称变换失败: {e}")
+        return None
+
+
+def _process_image_symmetric(image_path: str, direction: str, img_bytes: Optional[bytes] = None, image_type: Optional[str] = None) -> Tuple[Union[str, bytes, None], bool]:
+    """通用图像对称处理函数，支持缓存和无缓存两种模式
+    
+    Args:
+        image_path: 图像文件路径（缓存模式使用）
+        direction: 对称方向，可选值为'left'、'right'、'top'、'bottom'
+        img_bytes: 输入图像字节数据（无缓存模式使用）
+        image_type: 图像类型
+    
+    Returns:
+        一个元组，包含处理后的图像字节数据或文件路径，以及是否为字节数据的标志
+    """
+    # 无缓存模式
+    if SymmetryUtils.is_cacheless_mode() and img_bytes:
+        logger.debug(f"无缓存模式处理图像对称: {direction}")
+        processed_bytes = _process_image_symmetric_from_bytes(img_bytes, direction, image_type)
+        return processed_bytes, True
+    
+    # 缓存模式
+    try:
+        # 打开图像文件
+        img = Image.open(image_path)
+        
+        # 生成唯一标识符（基于原始文件路径）
+        image_hash = hashlib.md5(image_path.encode()).hexdigest()
+        
+        # 检查是否为GIF且为动画
+        is_gif = image_type and image_type.startswith('gif') and hasattr(img, 'is_animated') and img.is_animated
+        
+        if is_gif:
+            logger.debug(f"处理GIF动画，帧数: {img.n_frames}")
+            # 处理GIF动画的所有帧
+            frames, durations = _process_gif_frames(img, direction)
+            
+            # 创建临时输出路径
+            output_path = os.path.join(SymmetryUtils.get_after_cache_dir(), f"{image_hash}_{direction}.gif")
+            
+            # 确保目录存在
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            # 保存处理后的GIF
+            output_stream = open(output_path, 'wb')
+            
+            # 确保所有帧都是相同的模式（RGBA）以保证透明度一致性
+            processed_frames = []
+            for frame in frames:
+                if frame.mode != 'RGBA':
+                    frame = frame.convert('RGBA')
+                processed_frames.append(frame)
+            
+            # 准备GIF保存参数
+            gif_params = {
+                'format': 'GIF',
+                'append_images': processed_frames[1:],
+                'save_all': True,
+                'duration': durations,
+                'loop': 0,
+                'disposal': 2,
+                'optimize': False
+            }
+            
+            # 只在原始图像有透明色信息时添加transparency参数
+            if hasattr(img, 'info') and 'transparency' in img.info:
+                gif_params['transparency'] = img.info['transparency']
+            
+            # 保存GIF动画
+            processed_frames[0].save(output_path, **gif_params)
+            return output_path, False
         else:
             # 处理静态图片
             result_img = _process_single_frame(img, direction)
             
-            # 保存结果到字节流
-            img_byte_arr = io.BytesIO()
-            
             # 获取原始图片格式，保持格式一致性
             original_format = img.format if img.format else 'PNG'
+            
+            # 创建临时输出路径
+            output_path = os.path.join(SymmetryUtils.get_after_cache_dir(), f"{image_hash}_{direction}.{original_format.lower()}")
+            
+            # 确保目录存在
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
             
             # 对于JPEG和其他非透明格式，需要确保没有透明度通道或正确处理
             if original_format.upper() == 'JPEG' and result_img.mode == 'RGBA':
@@ -212,63 +326,67 @@ def _process_image_symmetric(image_path: str, direction: str, image_type: str = 
             # 保留图像的EXIF信息，特别是方向信息
             exif = img.info.get('exif')
             if exif:
-                result_img.save(img_byte_arr, format=original_format, exif=exif)
+                result_img.save(output_path, format=original_format, exif=exif)
             else:
-                result_img.save(img_byte_arr, format=original_format)
+                result_img.save(output_path, format=original_format)
                 
-            return img_byte_arr.getvalue()
+            return output_path, False
     except Exception as e:
         logger.debug(f"{direction}方向对称处理失败: {e}")
-        return None
+        return None, False
 
 
-def process_image_symmetric_left(image_path: str, image_type: str = None) -> Optional[bytes]:
+def process_image_symmetric_left(image_path: str, img_bytes: Optional[bytes] = None, image_type: Optional[str] = None) -> Tuple[Union[str, bytes, None], bool]:
     """处理图片，将左半部分镜像覆盖到右半部分
     
     Args:
-        image_path: 图像文件路径
+        image_path: 图像文件路径（缓存模式使用）
+        img_bytes: 输入图像字节数据（无缓存模式使用）
         image_type: 图像类型，可选参数
     
     Returns:
-        处理后的图像字节数据，如果处理失败返回None
+        一个元组，包含处理后的图像字节数据或文件路径，以及是否为字节数据的标志
     """
-    return _process_image_symmetric(image_path, "left", image_type)
+    return _process_image_symmetric(image_path, "left", img_bytes, image_type)
 
 
-def process_image_symmetric_right(image_path: str, image_type: str = None) -> Optional[bytes]:
+def process_image_symmetric_right(image_path: str, img_bytes: Optional[bytes] = None, image_type: Optional[str] = None) -> Tuple[Union[str, bytes, None], bool]:
     """处理图片，将右半部分镜像覆盖到左半部分
     
     Args:
-        image_path: 图像文件路径
+        image_path: 图像文件路径（缓存模式使用）
+        img_bytes: 输入图像字节数据（无缓存模式使用）
         image_type: 图像类型，可选参数
     
     Returns:
-        处理后的图像字节数据，如果处理失败返回None
+        一个元组，包含处理后的图像字节数据或文件路径，以及是否为字节数据的标志
     """
-    return _process_image_symmetric(image_path, "right", image_type)
+    return _process_image_symmetric(image_path, "right", img_bytes, image_type)
 
 
-def process_image_symmetric_top(image_path: str, image_type: str = None) -> Optional[bytes]:
+def process_image_symmetric_top(image_path: str, img_bytes: Optional[bytes] = None, image_type: Optional[str] = None) -> Tuple[Union[str, bytes, None], bool]:
     """处理图片，将上半部分镜像覆盖到下半部分
     
     Args:
-        image_path: 图像文件路径
+        image_path: 图像文件路径（缓存模式使用）
+        img_bytes: 输入图像字节数据（无缓存模式使用）
         image_type: 图像类型，可选参数
     
     Returns:
-        处理后的图像字节数据，如果处理失败返回None
+        一个元组，包含处理后的图像字节数据或文件路径，以及是否为字节数据的标志
     """
-    return _process_image_symmetric(image_path, "top", image_type)
+    return _process_image_symmetric(image_path, "top", img_bytes, image_type)
 
 
-def process_image_symmetric_bottom(image_path: str, image_type: str = None) -> Optional[bytes]:
+def process_image_symmetric_bottom(image_path: str, img_bytes: Optional[bytes] = None, image_type: Optional[str] = None) -> Tuple[Union[str, bytes, None], bool]:
     """处理图片，将下半部分镜像覆盖到上半部分
     
     Args:
-        image_path: 图像文件路径
+        image_path: 图像文件路径（缓存模式使用）
+        img_bytes: 输入图像字节数据（无缓存模式使用）
         image_type: 图像类型，可选参数
     
     Returns:
-        处理后的图像字节数据，如果处理失败返回None
+        一个元组，包含处理后的图像字节数据或文件路径，以及是否为字节数据的标志
     """
-    return _process_image_symmetric(image_path, "bottom", image_type)
+    return _process_image_symmetric(image_path, "bottom", img_bytes, image_type)
