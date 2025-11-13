@@ -9,9 +9,69 @@ from nonebot.log import logger
 # 获取NoneBot驱动实例，用于读取配置
 driver = get_driver()
 
+# 在模块级别先获取无缓存模式状态
+def _get_cacheless_mode_module():
+    """从NoneBot配置获取无缓存模式设置（模块级别）"""
+    try:
+        cacheless_value = getattr(driver.config, "cacheless", "false")
+        
+        if isinstance(cacheless_value, bool):
+            cacheless = cacheless_value
+        else:
+            cacheless = str(cacheless_value).lower() == "true"
+        
+        logger.debug(f"无缓存模式设置: {'启用' if cacheless else '禁用'} (从NoneBot配置获取)")
+        return cacheless
+    except Exception as e:
+        logger.warning(f"获取无缓存模式配置失败: {e}，使用默认值False")
+        logger.debug("无缓存模式设置: 禁用 (默认值)")
+        return False
+
+# 模块级别的无缓存模式状态
+_CACHELESS_MODE_MODULE = _get_cacheless_mode_module()
+
+# 在模块级别获取最大缓存数量
+def _get_max_cache_size_module():
+    """从NoneBot配置获取最大缓存数量（模块级别）"""
+    # 在无缓存模式下，直接返回默认值而不读取配置
+    if _CACHELESS_MODE_MODULE:
+        logger.debug("无缓存模式已启用，跳过读取最大缓存图片数量")
+        return 100
+    
+    try:
+        max_size = getattr(driver.config, "image_symmetry_max_cache", 100)
+        if 5 <= max_size <= 9999:
+            logger.debug(f"使用最大缓存图片数量: {max_size} (从NoneBot配置获取)")
+            return max_size
+        else:
+            logger.warning(f"配置image_symmetry_max_cache值{max_size}超出范围[5, 9999]，使用默认值100")
+            logger.debug(f"使用最大缓存图片数量: 100 (默认值)")
+            return 100
+    except (ValueError, TypeError):
+        logger.warning(f"配置image_symmetry_max_cache值无效，使用默认值100")
+        logger.debug(f"使用最大缓存图片数量: 100 (默认值)")
+        return 100
+
+# 模块级别的最大缓存数量
+_MAX_TOTAL_CACHE_SIZE_MODULE = _get_max_cache_size_module()
+
 
 class SymmetryUtils:
     """对称处理工具类，提供图像缓存管理和文件操作相关的工具方法"""
+    
+    # 使用模块级变量作为类变量
+    CACHELESS_MODE = _CACHELESS_MODE_MODULE
+    MAX_TOTAL_CACHE_SIZE = _MAX_TOTAL_CACHE_SIZE_MODULE
+    
+    # 无缓存模式开关，通过NoneBot配置控制，默认关闭
+    @staticmethod
+    def _get_cacheless_mode():
+        """从NoneBot配置获取无缓存模式设置
+        
+        Returns:
+            bool: True表示启用无缓存模式，False表示使用缓存模式
+        """
+        return _CACHELESS_MODE_MODULE
     
     # 从NoneBot配置获取最大缓存数量，默认为100，范围[5, 9999]
     @staticmethod
@@ -21,6 +81,8 @@ class SymmetryUtils:
         Returns:
             int: 有效的最大缓存数量，确保在[5, 9999]范围内
         """
+        return _MAX_TOTAL_CACHE_SIZE_MODULE
+            
         try:
             # 从driver.config获取配置，这是NoneBot推荐的方式
             # 如果配置不存在，默认使用100
@@ -40,36 +102,6 @@ class SymmetryUtils:
     
     # 两个目录总计的最大缓存图片数量
     MAX_TOTAL_CACHE_SIZE = _get_max_cache_size()
-    
-    # 无缓存模式开关，通过NoneBot配置控制，默认关闭
-    @staticmethod
-    def _get_cacheless_mode():
-        """从NoneBot配置获取无缓存模式设置
-        
-        Returns:
-            bool: True表示启用无缓存模式，False表示使用缓存模式
-        """
-        try:
-            # 从driver.config获取配置，这是NoneBot推荐的方式
-            # 如果配置不存在，默认使用false（字符串）
-            cacheless_value = getattr(driver.config, "cacheless", "false")
-            
-            # 处理可能的布尔值或字符串值
-            if isinstance(cacheless_value, bool):
-                cacheless = cacheless_value
-            else:
-                # 如果是字符串，转换为小写并检查
-                cacheless = str(cacheless_value).lower() == "true"
-            
-            logger.debug(f"无缓存模式设置: {'启用' if cacheless else '禁用'} (从NoneBot配置获取)")
-            return cacheless
-        except Exception as e:
-            logger.warning(f"获取无缓存模式配置失败: {e}，使用默认值False")
-            logger.debug("无缓存模式设置: 禁用 (默认值)")
-            return False
-    
-    # 无缓存模式状态
-    CACHELESS_MODE = _get_cacheless_mode()
     
     @staticmethod
     def is_cacheless_mode() -> bool:

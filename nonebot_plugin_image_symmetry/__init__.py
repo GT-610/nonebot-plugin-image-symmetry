@@ -106,11 +106,14 @@ def create_matcher(command: Command):
                     logger.debug(f"使用无缓存模式处理图片，方向: {direction}")
                     
                     # 异步执行图像处理（直接传入字节数据）
-                    processed_bytes = await run_sync(command.func)(
+                    result = await run_sync(command.func)(
                         file_path=None,
                         img_bytes=img_bytes,
                         image_type=image_type
                     )
+                    
+                    # 解包返回的元组 (processed_bytes, is_bytes)
+                    processed_bytes, _ = result
                     
                     if not processed_bytes:
                         logger.error("图像处理失败，返回空数据")
@@ -135,24 +138,22 @@ def create_matcher(command: Command):
                     logger.debug(f"图片已保存至: {temp_path}")
                     
                     # 异步执行图像处理
-                    processed_bytes = await run_sync(command.func)(
+                    result = await run_sync(command.func)(
                         file_path=temp_path,
                         image_type=image_type
                     )
                     
-                    if not processed_bytes:
+                    # 解包返回的元组 (processed_path, is_bytes)
+                    processed_path, is_bytes = result
+                    
+                    if not processed_path:
                         logger.error("图像处理失败，返回空数据")
                         await matcher.finish("图像处理失败，请重试")
                     
-                    # 保存处理后的图片并管理缓存
-                    output_path = SymmetryUtils.save_processed_image(image_hash, direction, processed_bytes, image_type)
-                    if not output_path:
-                        logger.error("保存处理后图片失败")
-                        await matcher.finish("保存处理后图片失败，请重试")
-                        return
+                    # 缓存模式下，处理函数已经返回保存的文件路径
+                    output_path = processed_path
                     
                     logger.debug(f"处理后图片已保存至: {output_path}")
-                    logger.debug(f"处理后图片大小: {len(processed_bytes)} 字节")
                     
                     # 发送处理后的图片
                     await UniMessage.image(path=output_path).send()
