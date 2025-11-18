@@ -13,7 +13,7 @@ driver = get_driver()
 def _get_cacheless_mode_module():
     """从NoneBot配置获取无缓存模式设置（模块级别）"""
     try:
-        cacheless_value = getattr(driver.config, "cacheless", "false")
+        cacheless_value = getattr(driver.config, "image_symmetry_cacheless", "true")
         
         if isinstance(cacheless_value, bool):
             cacheless = cacheless_value

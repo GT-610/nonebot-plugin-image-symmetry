@@ -152,7 +152,7 @@ def create_matcher(command: Command):
                     )
                     
                     # 解包返回的元组 (processed_path, is_bytes)
-                    processed_path, is_bytes = result
+                    processed_path, _ = result
                     
                     if not processed_path:
                         logger.error("图像处理失败，返回空数据")
@@ -184,7 +184,18 @@ def help_cmd():
     @help_matcher.handle()
     async def handle_help():
         # 帮助文本内容，说明插件使用方法和支持的命令
-        help_text = "图像对称处理插件使用说明（记得加前缀）：\n1. 直接发送：命令 + 图片\n2. 回复处理：回复图片消息 + 命令\n\n支持的命令：\n- 对称/对称左：将图片左半部分镜像到右半部分\n- 对称右：将图片右半部分镜像到左半部分\n- 对称上：将图片上半部分镜像到下半部分\n- 对称下：将图片下半部分镜像到上半部分\n\n例如：发送'对称左'加上一张图片，或回复一张图片说'对称上'\n\n插件支持两种运行模式：\n1. 缓存模式（默认）：会缓存原始图片和处理后的图片\n   缓存数量可通过环境变量 IMAGE_SYMMETRY_MAX_CACHE 控制，默认100张\n2. 无缓存模式：图片完全在内存中处理，不保存到本地\n   可通过环境变量 CACHELESS=true 启用无缓存模式"  
+        help_text = (
+            "图像对称处理插件使用说明（记得加前缀）：\n"
+            "1. 直接发送：命令 + 图片\n"
+            "2. 回复处理：回复图片消息 + 命令\n\n"
+            "支持的命令：\n"
+            "- 对称/对称左：将图片左半部分镜像到右半部分\n"
+            "- 对称右：将图片右半部分镜像到左半部分\n"
+            "- 对称上：将图片上半部分镜像到下半部分\n"
+            "- 对称下：将图片下半部分镜像到上半部分\n\n"
+            "例如：发送'对称左'加上一张图片，或回复一张图片说'对称上'\n\n"
+            "插件源代码：https://github.com/GT-610/nonebot-plugin-image-symmetry"
+        )
         await UniMessage.text(help_text).send()
 
 # 在插件加载时创建所有命令匹配器和帮助命令
