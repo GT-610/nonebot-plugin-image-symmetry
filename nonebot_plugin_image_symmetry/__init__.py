@@ -5,9 +5,8 @@ from nonebot.typing import T_State
 from nonebot.log import logger
 from nonebot.utils import run_sync
 
-# 引入命令处理和本地存储相关插件
+# 引入命令处理插件
 require("nonebot_plugin_alconna")
-require("nonebot_plugin_localstore")
 from nonebot_plugin_alconna import (
     AlcMatches,
     Alconna,
