@@ -1,35 +1,9 @@
 import io
 from PIL import Image
-from nonebot import get_driver
 from nonebot.log import logger
-
-# 获取NoneBot驱动实例，用于读取配置
-driver = get_driver()
 
 class SymmetryUtils:
     """对称处理工具类，提供图像处理相关的工具方法"""
-    
-    # 无缓存模式始终启用
-    CACHELESS_MODE = True
-    
-    @staticmethod
-    def is_cacheless_mode() -> bool:
-        """检查是否启用无缓存模式
-        
-        Returns:
-            bool: True表示启用无缓存模式
-        """
-        return True
-    
-    @staticmethod
-    def initialize_directories() -> None:
-        """初始化所有必要的目录结构，无缓存模式下不需要初始化目录"""
-        logger.info("已启用无缓存模式，跳过目录初始化")
-    
-    @staticmethod
-    def cleanup_global_cache(max_size: int = None) -> None:
-        """清理全局缓存，无缓存模式下不需要执行缓存清理"""
-        logger.debug("无缓存模式: 跳过缓存清理")
     @staticmethod
     def identify_image_type(img_bytes: bytes) -> str:
         """识别图像类型
@@ -60,14 +34,14 @@ class SymmetryUtils:
             img_bytes: 图像字节数据
             
         Returns:
-            tuple: (临时文件路径, 图像类型)，无缓存模式下返回(None, 图像类型)
+            tuple: (临时文件路径, 图像类型)，直接返回(None, 图像类型)
         """
         # 识别图像类型
         image_type = SymmetryUtils.identify_image_type(img_bytes)
         logger.debug(f"识别到的图像类型: {image_type}")
         
-        # 无缓存模式下，直接返回None路径和识别到的类型
-        logger.debug("无缓存模式: 跳过临时文件保存")
+        # 直接返回None路径和识别到的类型
+        logger.debug("跳过临时文件保存")
         return None, image_type
     
     @staticmethod

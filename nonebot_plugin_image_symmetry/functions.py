@@ -188,7 +188,7 @@ def _save_gif_frames_to_bytes(frames: List[Image.Image], durations: List[int], o
     return output_stream
 
 def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_type: Optional[str] = None) -> Optional[bytes]:
-    """从字节数据处理图像对称变换（无缓存模式）
+    """从字节数据处理图像对称变换
     
     Args:
         img_bytes: 输入图像字节数据
@@ -199,7 +199,7 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
         处理后图像的字节数据，如果处理失败返回None
     """
     try:
-        logger.debug(f"开始无缓存模式图像处理，方向: {direction}")
+        logger.debug(f"开始图像处理，方向: {direction}")
         
         # 创建BytesIO对象
         img_io = io.BytesIO(img_bytes)
@@ -267,75 +267,57 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
             pass
 
 
-def _process_image_symmetric(image_path: str, direction: str, img_bytes: Optional[bytes] = None, image_type: Optional[str] = None) -> Tuple[Union[str, bytes, None], bool]:
-    """通用图像对称处理函数，仅支持无缓存模式
+def symmetric_left(img_bytes: bytes, image_type: Optional[str] = None) -> Optional[bytes]:
+    """图像左侧对称处理
     
     Args:
-        image_path: 图像文件路径（未使用，仅为兼容性保留）
-        direction: 对称方向，可选值为'left'、'right'、'top'、'bottom'
         img_bytes: 输入图像字节数据
         image_type: 图像类型
     
     Returns:
-        一个元组，包含处理后的图像字节数据和True标志
+        处理后的图像字节数据
     """
-    # 无缓存模式处理
-    logger.debug(f"无缓存模式处理图像对称: {direction}")
-    processed_bytes = _process_image_symmetric_from_bytes(img_bytes, direction, image_type)
-    return processed_bytes, True
+    logger.debug("处理图像左侧对称")
+    return _process_image_symmetric_from_bytes(img_bytes, "left", image_type)
 
 
-def symmetric_left(image_path: str, img_bytes: Optional[bytes] = None, image_type: Optional[str] = None) -> Tuple[Union[str, bytes, None], bool]:
-    """图像左侧对称处理（仅支持无缓存模式）
+def symmetric_right(img_bytes: bytes, image_type: Optional[str] = None) -> Optional[bytes]:
+    """图像右侧对称处理
     
     Args:
-        image_path: 图像文件路径（未使用，仅为兼容性保留）
         img_bytes: 输入图像字节数据
         image_type: 图像类型
     
     Returns:
-        一个元组，包含处理后的图像字节数据和True标志
+        处理后的图像字节数据
     """
-    return _process_image_symmetric(image_path, "left", img_bytes, image_type)
+    logger.debug("处理图像右侧对称")
+    return _process_image_symmetric_from_bytes(img_bytes, "right", image_type)
 
 
-def symmetric_right(image_path: str, img_bytes: Optional[bytes] = None, image_type: Optional[str] = None) -> Tuple[Union[str, bytes, None], bool]:
-    """图像右侧对称处理（仅支持无缓存模式）
+def symmetric_top(img_bytes: bytes, image_type: Optional[str] = None) -> Optional[bytes]:
+    """图像顶部对称处理
     
     Args:
-        image_path: 图像文件路径（未使用，仅为兼容性保留）
         img_bytes: 输入图像字节数据
         image_type: 图像类型
     
     Returns:
-        一个元组，包含处理后的图像字节数据和True标志
+        处理后的图像字节数据
     """
-    return _process_image_symmetric(image_path, "right", img_bytes, image_type)
+    logger.debug("处理图像顶部对称")
+    return _process_image_symmetric_from_bytes(img_bytes, "top", image_type)
 
 
-def symmetric_top(image_path: str, img_bytes: Optional[bytes] = None, image_type: Optional[str] = None) -> Tuple[Union[str, bytes, None], bool]:
-    """图像顶部对称处理（仅支持无缓存模式）
+def symmetric_bottom(img_bytes: bytes, image_type: Optional[str] = None) -> Optional[bytes]:
+    """图像底部对称处理
     
     Args:
-        image_path: 图像文件路径（未使用，仅为兼容性保留）
         img_bytes: 输入图像字节数据
         image_type: 图像类型
     
     Returns:
-        一个元组，包含处理后的图像字节数据和True标志
+        处理后的图像字节数据
     """
-    return _process_image_symmetric(image_path, "top", img_bytes, image_type)
-
-
-def symmetric_bottom(image_path: str, img_bytes: Optional[bytes] = None, image_type: Optional[str] = None) -> Tuple[Union[str, bytes, None], bool]:
-    """图像底部对称处理（仅支持无缓存模式）
-    
-    Args:
-        image_path: 图像文件路径（未使用，仅为兼容性保留）
-        img_bytes: 输入图像字节数据
-        image_type: 图像类型
-    
-    Returns:
-        一个元组，包含处理后的图像字节数据和True标志
-    """
-    return _process_image_symmetric(image_path, "bottom", img_bytes, image_type)
+    logger.debug("处理图像底部对称")
+    return _process_image_symmetric_from_bytes(img_bytes, "bottom", image_type)

@@ -108,12 +108,11 @@ def create_matcher(command: Command):
                 }
                 direction = direction_map.get(main_keyword, "unknown")
                 
-                # 无缓存模式：直接在内存中处理
-                logger.debug(f"使用无缓存模式处理图片，方向: {direction}")
+                # 直接在内存中处理
+                logger.debug(f"处理图片，方向: {direction}")
                 
                 # 异步执行图像处理（直接传入字节数据）
                 processed_data = await run_sync(command.func)(
-                    file_path=None,
                     img_bytes=img_bytes,
                     image_type=image_type
                 )
@@ -170,7 +169,4 @@ help_cmd()
 @driver.on_startup
 async def _startup():
     """插件启动时执行初始化操作"""
-    # 初始化插件所需的目录结构
-    SymmetryUtils.initialize_directories()
     logger.info("图像对称处理插件已启动")
-    logger.info("当前运行在无缓存模式下")
