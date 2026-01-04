@@ -22,6 +22,10 @@ _✨ NoneBot 图像对称插件 ✨_
     <img src="https://img.shields.io/badge/NoneBot-v2-green.svg" alt="NoneBot2">
 </a>
 
+<a href="https://github.com/GT-610/nonebot-plugin-image-symmetry/actions/workflows/publish.yml">
+   <img src="https://github.com/GT-610/nonebot-plugin-image-symmetry/actions/workflows/publish.yml/badge.svg" alt="Publish to PyPI">
+</a>
+
 </div>
 
 ## 📖 介绍
