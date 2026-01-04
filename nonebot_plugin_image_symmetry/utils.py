@@ -16,14 +16,12 @@ class SymmetryUtils:
         """
         try:
             with Image.open(io.BytesIO(img_bytes)) as img:
-                # 获取图像格式
                 format_type = img.format.lower() if img.format else None
-                # 检查是否为GIF动画
                 if format_type == 'gif' and getattr(img, 'is_animated', False):
                     return 'gif_animated'
                 return format_type
-        except Exception as e:
-            logger.debug(f"PIL识别图像格式失败: {e}")
+        except Exception:
+            logger.exception("PIL识别图像格式失败")
             return 'unknown'
     
     @staticmethod
@@ -76,18 +74,13 @@ class SymmetryUtils:
         try:
             img_stream = io.BytesIO()
             
-            # 确定保存格式
             format = image_type.upper() if image_type else img.format or 'PNG'
             
-            # 对于JPEG和其他非透明格式，需要确保没有透明度通道
             if format == 'JPEG' and img.mode == 'RGBA':
-                # 创建白色背景
                 background = Image.new('RGB', img.size, (255, 255, 255))
-                # 粘贴RGBA图像到白色背景上
-                background.paste(img, mask=img.split()[3])  # 使用alpha通道作为遮罩
+                background.paste(img, mask=img.split()[3])
                 img = background
                 
-            # 保留图像的EXIF信息
             exif = img.info.get('exif')
             if exif:
                 img.save(img_stream, format=format, exif=exif)
@@ -96,6 +89,6 @@ class SymmetryUtils:
             
             img_bytes = img_stream.getvalue()
             return img_bytes
-        except Exception as e:
-            logger.error(f"图像转换为字节数据失败: {e}")
+        except Exception:
+            logger.exception("图像转换为字节数据失败")
             return None

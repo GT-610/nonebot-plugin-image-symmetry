@@ -16,111 +16,57 @@ def _process_single_frame(img: Image.Image, direction: str) -> Image.Image:
     Returns:
         处理后的PIL图像对象
     """
+    img_rgba = None
+    result_img = None
     try:
-        # 统一转换为RGBA模式以正确处理透明度
         img_rgba = img.convert('RGBA')
-        
-        # 获取图片尺寸
         width, height = img_rgba.size
-        
-        # 创建透明背景的新图像作为结果容器
         result_img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
         
         if direction == "left":
-            # 计算水平对称轴位置
             mid_point = width // 2
-            
-            # 裁剪左半部分
             left_half = img_rgba.crop((0, 0, mid_point, height))
-            
-            # 水平翻转左半部分，准备镜像效果
             mirrored_left = left_half.transpose(Image.FLIP_LEFT_RIGHT)
-            
-            # 粘贴左半部分，对于RGBA图像，使用其alpha通道作为遮罩以保留透明度
             result_img.paste(left_half, (0, 0), left_half)
-            
-            # 粘贴镜像后的左半部分到右半部分，实现左侧对称效果
             result_img.paste(mirrored_left, (mid_point, 0), mirrored_left)
         elif direction == "right":
-            # 计算水平对称轴位置
             mid_point = width // 2
-            
-            # 裁剪右半部分
             right_half = img_rgba.crop((mid_point, 0, width, height))
-            
-            # 水平翻转右半部分，准备镜像效果
             mirrored_right = right_half.transpose(Image.FLIP_LEFT_RIGHT)
-            
-            # 粘贴右半部分，使用其alpha通道作为遮罩
             result_img.paste(right_half, (mid_point, 0), right_half)
-            
-            # 粘贴镜像后的右半部分到左半部分，实现右侧对称效果
             result_img.paste(mirrored_right, (0, 0), mirrored_right)
         elif direction == "top":
-            # 计算垂直对称轴位置
             mid_point = height // 2
-            
-            # 裁剪上半部分
             top_half = img_rgba.crop((0, 0, width, mid_point))
-            
-            # 垂直翻转上半部分，准备镜像效果
             mirrored_top = top_half.transpose(Image.FLIP_TOP_BOTTOM)
-            
-            # 粘贴上半部分，使用其alpha通道作为遮罩
             result_img.paste(top_half, (0, 0), top_half)
-            
-            # 粘贴镜像后的上半部分到下半部分，实现上方对称效果
             result_img.paste(mirrored_top, (0, mid_point), mirrored_top)
         elif direction == "bottom":
-            # 计算垂直对称轴位置
             mid_point = height // 2
-            
-            # 裁剪下半部分
             bottom_half = img_rgba.crop((0, mid_point, width, height))
-            
-            # 垂直翻转下半部分，准备镜像效果
             mirrored_bottom = bottom_half.transpose(Image.FLIP_TOP_BOTTOM)
-            
-            # 粘贴下半部分，使用其alpha通道作为遮罩
             result_img.paste(bottom_half, (0, mid_point), bottom_half)
-            
-            # 粘贴镜像后的下半部分到上半部分，实现下方对称效果
             result_img.paste(mirrored_bottom, (0, 0), mirrored_bottom)
         else:
             logger.warning(f"不支持的对称方向: {direction}，使用原图")
-            return img.copy()
+            final_result = img.copy()
+            return final_result
         
-        # 如果原图不是RGBA模式，转换回原图模式以保持格式一致性
         if img.mode != 'RGBA':
-            # 对于P模式（调色板模式）或其他模式，使用白色背景处理透明度
             if img.mode == 'P':
-                # 创建白色背景
                 background = Image.new('RGB', result_img.size, (255, 255, 255))
-                # 粘贴RGBA图像到白色背景上，使用alpha通道作为遮罩
                 background.paste(result_img, mask=result_img.split()[3])
-                return background.convert(img.mode)
+                final_result = background.convert(img.mode)
+                return final_result
             else:
-                # 其他模式直接转换
-                return result_img.convert(img.mode)
+                final_result = result_img.convert(img.mode)
+                return final_result
         
-        return result_img
+        final_result = result_img
+        return final_result
     except Exception as e:
-        logger.error(f"处理图像帧对称变换失败: {type(e).__name__}: {e}")
-        # 如果处理失败，返回原图的副本
+        logger.exception(f"处理图像帧对称变换失败: {type(e).__name__}: {e}")
         return img.copy()
-    finally:
-        # 确保所有临时图像资源被释放
-        if 'img_rgba' in locals():
-            img_rgba.close()
-        if 'result_img' in locals():
-            # 检查result_img是否是最终返回的图像，如果不是则关闭
-            if 'result' in locals() and result_img is not result:
-                result_img.close()
-        # 关闭裁剪的临时图像
-        for temp_img_name in ['left_half', 'mirrored_left', 'right_half', 'mirrored_right', 
-                             'top_half', 'mirrored_top', 'bottom_half', 'mirrored_bottom']:
-            if temp_img_name in locals():
-                locals()[temp_img_name].close()
 
 
 def _process_gif_frames(img: Image.Image, direction: str) -> Tuple[List[Image.Image], List[int]]:
@@ -136,14 +82,12 @@ def _process_gif_frames(img: Image.Image, direction: str) -> Tuple[List[Image.Im
     frames = []
     durations = []
     
-    # 遍历GIF的每一帧
-    for frame in ImageSequence.Iterator(img):
-        # 对每一帧执行指定方向的对称处理
+    for frame_num, frame in enumerate(ImageSequence.Iterator(img)):
         processed_frame = _process_single_frame(frame, direction)
         frames.append(processed_frame)
-        
-        # 获取帧延迟时间，如果没有则使用默认值100ms
         durations.append(frame.info.get('duration', 100))
+        if frame_num == 0:
+            frame.close()
     
     return frames, durations
 
@@ -198,6 +142,13 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
     Returns:
         处理后图像的字节数据，如果处理失败返回None
     """
+    if not img_bytes:
+        logger.error("输入图像字节数据为空")
+        return None
+    
+    if not direction:
+        logger.error("对称方向参数为空")
+        return None
     try:
         logger.debug(f"开始图像处理，方向: {direction}")
         
@@ -210,8 +161,8 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
             if img is None:
                 logger.error("无法将字节数据转换为图像")
                 return None
-        except Exception as e:
-            logger.error(f"创建图像对象失败: {type(e).__name__}: {e}")
+        except Exception:
+            logger.exception("创建图像对象失败")
             return None
         
         # 检查是否为GIF且为动画
@@ -220,50 +171,35 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
         if is_gif:
             logger.debug(f"处理GIF动画，帧数: {img.n_frames}")
             try:
-                # 处理GIF动画的所有帧
                 frames, durations = _process_gif_frames(img, direction)
-                
-                # 保存处理后的GIF到BytesIO
                 output_stream = _save_gif_frames_to_bytes(frames, durations, img)
                 result = output_stream.getvalue()
                 return result
-            except Exception as e:
-                logger.error(f"处理GIF动画失败: {type(e).__name__}: {e}")
+            except Exception:
+                logger.exception("处理GIF动画失败")
                 return None
         else:
             try:
-                # 处理静态图像
                 result_img = _process_single_frame(img, direction)
-                
-                # 转换回字节数据
                 result = SymmetryUtils.image_to_bytes(result_img, image_type)
-                
-                # 关闭图像以释放资源
                 result_img.close()
                 return result
-            except Exception as e:
-                logger.error(f"处理静态图像失败: {type(e).__name__}: {e}")
-                # 确保资源被释放
-                try:
-                    if 'result_img' in locals():
-                        result_img.close()
-                except:
-                    pass
+            except Exception:
+                logger.exception("处理静态图像失败")
                 return None
-    except Exception as e:
-        logger.error(f"从字节数据处理图像对称变换失败: {e}")
+    except Exception:
+        logger.exception("从字节数据处理图像对称变换失败")
         return None
     finally:
-        # 确保资源被释放
         try:
             if 'img_io' in locals():
                 img_io.close()
-        except:
+        except Exception:
             pass
         try:
             if 'img' in locals():
                 img.close()
-        except:
+        except Exception:
             pass
 
 
