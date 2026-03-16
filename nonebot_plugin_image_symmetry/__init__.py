@@ -1,8 +1,8 @@
-from nonebot import require, get_driver
-from nonebot.plugin import PluginMetadata, inherit_supported_adapters
+from nonebot import get_driver, require
 from nonebot.adapters import Bot, Event
-from nonebot.typing import T_State
 from nonebot.log import logger
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters
+from nonebot.typing import T_State
 from nonebot.utils import run_sync
 
 # 引入命令处理插件
@@ -43,7 +43,7 @@ def create_matcher(command: Command):
     # 主命令
     main_keyword = command.keywords[0]
     aliases = command.keywords[1:] if len(command.keywords) > 1 else []
-    
+
     # 创建Alconna命令并添加参数
     alc = Alconna(main_keyword, command.args)
     # 添加ReplyMergeExtension以支持回复消息处理
@@ -54,7 +54,7 @@ def create_matcher(command: Command):
         block=True,
         extensions=[ReplyMergeExtension()]
     )
-    
+
     # 注册命令处理函数
     @matcher.handle()
     async def handle_function(bot: Bot, event: Event, state: T_State, matches: AlcMatches):
@@ -62,19 +62,19 @@ def create_matcher(command: Command):
             # 调试输出：记录识别到的命令和消息内容
             logger.debug(f"识别到命令: {main_keyword}")
             logger.debug(f"完整消息内容: {event.get_plaintext()}")
-            
+
             img_bytes = None
             image_info = None
-            
+
             # 从命令参数中获取图片
-            if hasattr(matches, 'img') and matches.img:
+            if hasattr(matches, "img") and matches.img:
                 img = matches.img
                 image_info = f"命令参数图片 - URL: {getattr(img, 'url', 'N/A')}"
                 logger.debug(f"获取图片: {image_info}")
-                
+
                 # 记录下载图片的信息
                 logger.info(f"开始处理图片: URL: {getattr(img, 'url', 'N/A')}")
-                
+
                 # 下载图片字节数据
                 try:
                     img_bytes = await image_fetch(event, bot, state, img)
@@ -82,21 +82,21 @@ def create_matcher(command: Command):
                         logger.error("图片下载失败: 返回空数据")
                         await matcher.finish("图片下载失败，请重试")
                         return
-                    
+
                     logger.debug(f"成功下载图片，大小: {len(img_bytes)} 字节")
-                    
+
                     # 计算图片哈希值用于标识
                     import hashlib
                     image_hash = hashlib.md5(img_bytes).hexdigest()
                     logger.debug(f"获取图片成功，哈希值: {image_hash}")
                 except Exception as e:
                     logger.error(f"下载图片异常: {type(e).__name__}: {e}")
-                    await matcher.finish(f"图片处理异常: {str(e)}")
-                
+                    await matcher.finish(f"图片处理异常: {e!s}")
+
                 # 识别图片类型
                 image_type = SymmetryUtils.identify_image_type(img_bytes)
                 logger.debug(f"检测到图片类型: {image_type}")
-                
+
                 # 映射命令到对应的对称方向
                 direction_map = {
                     "对称左": "left",
@@ -106,31 +106,31 @@ def create_matcher(command: Command):
                     "对称下": "bottom"
                 }
                 direction = direction_map.get(main_keyword, "unknown")
-                
+
                 # 直接在内存中处理
                 logger.debug(f"处理图片，方向: {direction}")
-                
+
                 # 异步执行图像处理（直接传入字节数据）
                 processed_data = await run_sync(command.func)(
                     img_bytes=img_bytes,
                     image_type=image_type
                 )
-                
+
                 if not processed_data:
                     logger.error("图像处理失败，返回空数据")
                     await matcher.finish("图像处理失败，请重试")
-                
+
                 logger.debug(f"处理后图片大小: {len(processed_data)} 字节")
-                
+
                 # 直接发送字节数据
                 await UniMessage.image(raw=processed_data).send()
                 return
-            
+
         except Exception as e:
             # 捕获所有异常并记录错误日志
             logger.error(f"处理命令时发生错误: {type(e).__name__}: {e}")
             # 向用户发送友好的错误消息
-            await matcher.finish(f"处理失败：{str(e)}")
+            await matcher.finish(f"处理失败：{e!s}")
 
 def create_matchers():
     """为所有定义的命令创建对应的命令匹配器"""
@@ -142,7 +142,7 @@ def help_cmd():
     # 创建帮助命令匹配器
     help_alc = Alconna("对称帮助")
     help_matcher = on_alconna(help_alc, use_cmd_start=True)
-    
+
     @help_matcher.handle()
     async def handle_help():
         # 帮助文本内容，说明插件使用方法和支持的命令

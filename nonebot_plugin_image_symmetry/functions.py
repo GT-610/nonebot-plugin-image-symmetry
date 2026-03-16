@@ -1,7 +1,8 @@
 import io
-from typing import Optional, List, Tuple, Union
-from PIL import Image, ImageSequence
+from typing import List, Optional, Tuple
+
 from nonebot.log import logger
+from PIL import Image, ImageSequence
 
 from .utils import SymmetryUtils
 
@@ -19,10 +20,10 @@ def _process_single_frame(img: Image.Image, direction: str) -> Image.Image:
     img_rgba = None
     result_img = None
     try:
-        img_rgba = img.convert('RGBA')
+        img_rgba = img.convert("RGBA")
         width, height = img_rgba.size
-        result_img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-        
+        result_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+
         if direction == "left":
             mid_point = width // 2
             left_half = img_rgba.crop((0, 0, mid_point, height))
@@ -51,17 +52,9 @@ def _process_single_frame(img: Image.Image, direction: str) -> Image.Image:
             logger.warning(f"不支持的对称方向: {direction}，使用原图")
             final_result = img.copy()
             return final_result
-        
-        if img.mode != 'RGBA':
-            if img.mode == 'P':
-                background = Image.new('RGB', result_img.size, (255, 255, 255))
-                background.paste(result_img, mask=result_img.split()[3])
-                final_result = background.convert(img.mode)
-                return final_result
-            else:
-                final_result = result_img.convert(img.mode)
-                return final_result
-        
+
+        # 对于GIF处理，我们总是返回RGBA模式的结果
+        # 这样可以确保透明度信息被正确保留
         final_result = result_img
         return final_result
     except Exception as e:
@@ -81,12 +74,12 @@ def _process_gif_frames(img: Image.Image, direction: str) -> Tuple[List[Image.Im
     """
     frames = []
     durations = []
-    
+
     for frame_num, frame in enumerate(ImageSequence.Iterator(img)):
         processed_frame = _process_single_frame(frame, direction)
         frames.append(processed_frame)
-        durations.append(frame.info.get('duration', 100))
-    
+        durations.append(frame.info.get("duration", 100))
+
     return frames, durations
 
 
@@ -102,30 +95,30 @@ def _save_gif_frames_to_bytes(frames: List[Image.Image], durations: List[int], o
         包含GIF动画字节数据的BytesIO对象
     """
     output_stream = io.BytesIO()
-    
+
     # 确保所有帧都是相同的模式（RGBA）以保证透明度一致性
     processed_frames = []
     for frame in frames:
-        if frame.mode != 'RGBA':
-            frame = frame.convert('RGBA')
+        if frame.mode != "RGBA":
+            frame = frame.convert("RGBA")
         processed_frames.append(frame)
-    
+
     # 准备GIF保存参数
     # 尝试从原始GIF获取disposal方法，如果没有则使用默认值2
     disposal = 2
-    if hasattr(original_img, 'info') and 'disposal' in original_img.info:
-        disposal = original_img.info['disposal']
-    
+    if hasattr(original_img, "info") and "disposal" in original_img.info:
+        disposal = original_img.info["disposal"]
+
     gif_params = {
-        'format': 'GIF',
-        'append_images': processed_frames[1:],
-        'save_all': True,
-        'duration': durations,
-        'loop': 0,
-        'disposal': disposal,
-        'optimize': False
+        "format": "GIF",
+        "append_images": processed_frames[1:],
+        "save_all": True,
+        "duration": durations,
+        "loop": 0,
+        "disposal": disposal,
+        "optimize": False
     }
-    
+
     # 保存GIF动画
     # 注意：对于RGBA模式的GIF，不需要设置transparency参数
     # PIL会自动处理透明通道
@@ -146,19 +139,18 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
     if not img_bytes:
         logger.error("输入图像字节数据为空")
         return None
-    
+
     if not direction:
         logger.error("对称方向参数为空")
         return None
-    
+
     img_io = None
     img = None
     result = None
-    
+
     try:
         img_io = io.BytesIO(img_bytes)
-        img = None
-        
+
         try:
             img = Image.open(img_io)
             if img is None:
@@ -167,9 +159,9 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
         except Exception:
             logger.exception("创建图像对象失败")
             return None
-        
-        is_gif = image_type and image_type.startswith('gif') and hasattr(img, 'is_animated') and img.is_animated
-        
+
+        is_gif = image_type and image_type.startswith("gif") and hasattr(img, "is_animated") and img.is_animated
+
         if is_gif:
             logger.debug(f"处理GIF动画，帧数: {img.n_frames}")
             try:
@@ -207,11 +199,9 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
 
 def symmetric_left(img_bytes: bytes, image_type: Optional[str] = None) -> Optional[bytes]:
     """图像左侧对称处理
-    
     Args:
         img_bytes: 输入图像字节数据
         image_type: 图像类型
-    
     Returns:
         处理后的图像字节数据
     """
@@ -221,11 +211,9 @@ def symmetric_left(img_bytes: bytes, image_type: Optional[str] = None) -> Option
 
 def symmetric_right(img_bytes: bytes, image_type: Optional[str] = None) -> Optional[bytes]:
     """图像右侧对称处理
-    
     Args:
         img_bytes: 输入图像字节数据
         image_type: 图像类型
-    
     Returns:
         处理后的图像字节数据
     """
@@ -235,11 +223,9 @@ def symmetric_right(img_bytes: bytes, image_type: Optional[str] = None) -> Optio
 
 def symmetric_top(img_bytes: bytes, image_type: Optional[str] = None) -> Optional[bytes]:
     """图像顶部对称处理
-    
     Args:
         img_bytes: 输入图像字节数据
         image_type: 图像类型
-    
     Returns:
         处理后的图像字节数据
     """
@@ -249,11 +235,9 @@ def symmetric_top(img_bytes: bytes, image_type: Optional[str] = None) -> Optiona
 
 def symmetric_bottom(img_bytes: bytes, image_type: Optional[str] = None) -> Optional[bytes]:
     """图像底部对称处理
-    
     Args:
         img_bytes: 输入图像字节数据
         image_type: 图像类型
-    
     Returns:
         处理后的图像字节数据
     """

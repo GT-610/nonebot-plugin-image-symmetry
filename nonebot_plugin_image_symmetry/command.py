@@ -4,12 +4,7 @@ from typing import Callable, Optional
 from nonebot.log import logger
 from nonebot_plugin_alconna import Args, Image
 
-from .functions import (
-    symmetric_left,
-    symmetric_right,
-    symmetric_top,
-    symmetric_bottom
-)
+from .functions import symmetric_bottom, symmetric_left, symmetric_right, symmetric_top
 
 arg_image = Args["img", Image]
 
