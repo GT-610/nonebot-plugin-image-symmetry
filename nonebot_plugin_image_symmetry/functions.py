@@ -86,8 +86,6 @@ def _process_gif_frames(img: Image.Image, direction: str) -> Tuple[List[Image.Im
         processed_frame = _process_single_frame(frame, direction)
         frames.append(processed_frame)
         durations.append(frame.info.get('duration', 100))
-        if frame_num == 0:
-            frame.close()
     
     return frames, durations
 
@@ -113,21 +111,24 @@ def _save_gif_frames_to_bytes(frames: List[Image.Image], durations: List[int], o
         processed_frames.append(frame)
     
     # 准备GIF保存参数
+    # 尝试从原始GIF获取disposal方法，如果没有则使用默认值2
+    disposal = 2
+    if hasattr(original_img, 'info') and 'disposal' in original_img.info:
+        disposal = original_img.info['disposal']
+    
     gif_params = {
         'format': 'GIF',
         'append_images': processed_frames[1:],
         'save_all': True,
         'duration': durations,
         'loop': 0,
-        'disposal': 2,
+        'disposal': disposal,
         'optimize': False
     }
     
-    # 只在原始图像有透明色信息时添加transparency参数
-    if hasattr(original_img, 'info') and 'transparency' in original_img.info:
-        gif_params['transparency'] = original_img.info['transparency']
-    
     # 保存GIF动画
+    # 注意：对于RGBA模式的GIF，不需要设置transparency参数
+    # PIL会自动处理透明通道
     processed_frames[0].save(output_stream, **gif_params)
     return output_stream
 
@@ -149,15 +150,17 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
     if not direction:
         logger.error("对称方向参数为空")
         return None
+    
+    img_io = None
+    img = None
+    result = None
+    
     try:
-        logger.debug(f"开始图像处理，方向: {direction}")
-        
-        # 创建BytesIO对象
         img_io = io.BytesIO(img_bytes)
+        img = None
         
-        # 将字节数据转换为图像对象
         try:
-            img = SymmetryUtils.bytes_to_image(img_bytes)
+            img = Image.open(img_io)
             if img is None:
                 logger.error("无法将字节数据转换为图像")
                 return None
@@ -165,7 +168,6 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
             logger.exception("创建图像对象失败")
             return None
         
-        # 检查是否为GIF且为动画
         is_gif = image_type and image_type.startswith('gif') and hasattr(img, 'is_animated') and img.is_animated
         
         if is_gif:
@@ -192,13 +194,13 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
         return None
     finally:
         try:
-            if 'img_io' in locals():
-                img_io.close()
+            if img is not None:
+                img.close()
         except Exception:
             pass
         try:
-            if 'img' in locals():
-                img.close()
+            if img_io is not None:
+                img_io.close()
         except Exception:
             pass
 
