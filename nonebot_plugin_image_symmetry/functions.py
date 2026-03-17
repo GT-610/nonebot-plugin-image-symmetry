@@ -7,13 +7,49 @@ from PIL import Image, ImageSequence
 from .utils import SymmetryUtils
 
 
+def _apply_symmetry(img_rgba: Image.Image, result_img: Image.Image, direction: str) -> None:
+    """应用对称变换到图像
+
+    Args:
+        img_rgba: RGBA格式的原始图像
+        result_img: 结果图像对象
+        direction: 对称方向，可选值为'left'、'right'、'top'、'bottom'
+    """
+    width, height = img_rgba.size
+
+    if direction == "left":
+        mid_point = width // 2
+        left_half = img_rgba.crop((0, 0, mid_point, height))
+        mirrored_left = left_half.transpose(Image.FLIP_LEFT_RIGHT)
+        result_img.paste(left_half, (0, 0), left_half)
+        result_img.paste(mirrored_left, (mid_point, 0), mirrored_left)
+    elif direction == "right":
+        mid_point = width // 2
+        right_half = img_rgba.crop((mid_point, 0, width, height))
+        mirrored_right = right_half.transpose(Image.FLIP_LEFT_RIGHT)
+        result_img.paste(right_half, (mid_point, 0), right_half)
+        result_img.paste(mirrored_right, (0, 0), mirrored_right)
+    elif direction == "top":
+        mid_point = height // 2
+        top_half = img_rgba.crop((0, 0, width, mid_point))
+        mirrored_top = top_half.transpose(Image.FLIP_TOP_BOTTOM)
+        result_img.paste(top_half, (0, 0), top_half)
+        result_img.paste(mirrored_top, (0, mid_point), mirrored_top)
+    elif direction == "bottom":
+        mid_point = height // 2
+        bottom_half = img_rgba.crop((0, mid_point, width, height))
+        mirrored_bottom = bottom_half.transpose(Image.FLIP_TOP_BOTTOM)
+        result_img.paste(bottom_half, (0, mid_point), bottom_half)
+        result_img.paste(mirrored_bottom, (0, 0), mirrored_bottom)
+
+
 def _process_single_frame(img: Image.Image, direction: str) -> Image.Image:
     """处理单帧图像，执行指定方向的对称变换，正确处理透明度和图像模式
-    
+
     Args:
         img: 需要处理的PIL图像对象
         direction: 对称方向，可选值为'left'、'right'、'top'、'bottom'
-    
+
     Returns:
         处理后的PIL图像对象
     """
@@ -24,30 +60,8 @@ def _process_single_frame(img: Image.Image, direction: str) -> Image.Image:
         width, height = img_rgba.size
         result_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
 
-        if direction == "left":
-            mid_point = width // 2
-            left_half = img_rgba.crop((0, 0, mid_point, height))
-            mirrored_left = left_half.transpose(Image.FLIP_LEFT_RIGHT)
-            result_img.paste(left_half, (0, 0), left_half)
-            result_img.paste(mirrored_left, (mid_point, 0), mirrored_left)
-        elif direction == "right":
-            mid_point = width // 2
-            right_half = img_rgba.crop((mid_point, 0, width, height))
-            mirrored_right = right_half.transpose(Image.FLIP_LEFT_RIGHT)
-            result_img.paste(right_half, (mid_point, 0), right_half)
-            result_img.paste(mirrored_right, (0, 0), mirrored_right)
-        elif direction == "top":
-            mid_point = height // 2
-            top_half = img_rgba.crop((0, 0, width, mid_point))
-            mirrored_top = top_half.transpose(Image.FLIP_TOP_BOTTOM)
-            result_img.paste(top_half, (0, 0), top_half)
-            result_img.paste(mirrored_top, (0, mid_point), mirrored_top)
-        elif direction == "bottom":
-            mid_point = height // 2
-            bottom_half = img_rgba.crop((0, mid_point, width, height))
-            mirrored_bottom = bottom_half.transpose(Image.FLIP_TOP_BOTTOM)
-            result_img.paste(bottom_half, (0, mid_point), bottom_half)
-            result_img.paste(mirrored_bottom, (0, 0), mirrored_bottom)
+        if direction in ("left", "right", "top", "bottom"):
+            _apply_symmetry(img_rgba, result_img, direction)
         else:
             logger.warning(f"不支持的对称方向: {direction}，使用原图")
             final_result = img.copy()

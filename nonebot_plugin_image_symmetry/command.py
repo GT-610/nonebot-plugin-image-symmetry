@@ -25,7 +25,7 @@ def _create_symmetric_process_func(func: Callable, direction_name: str) -> Calla
     Returns:
         包装后的处理函数
     """
-    def process_func(img_bytes: bytes = None, image_type: str = None) -> Optional[bytes]:
+    def process_func(img_bytes: Optional[bytes] = None, image_type: Optional[str] = None) -> Optional[bytes]:
         try:
             return func(img_bytes, image_type)
         except Exception as e:

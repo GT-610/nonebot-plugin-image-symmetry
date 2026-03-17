@@ -1,3 +1,5 @@
+import hashlib
+
 from nonebot import get_driver, require
 from nonebot.adapters import Bot, Event
 from nonebot.log import logger
@@ -32,6 +34,15 @@ __plugin_meta__ = PluginMetadata(
 
 # 获取驱动实例，用于插件生命周期管理
 driver = get_driver()
+
+# 命令到对称方向的映射
+DIRECTION_MAP = {
+    "对称左": "left",
+    "对称": "left",
+    "对称右": "right",
+    "对称上": "top",
+    "对称下": "bottom"
+}
 
 
 def create_matcher(command: Command):
@@ -86,7 +97,6 @@ def create_matcher(command: Command):
                     logger.debug(f"成功下载图片，大小: {len(img_bytes)} 字节")
 
                     # 计算图片哈希值用于标识
-                    import hashlib
                     image_hash = hashlib.md5(img_bytes).hexdigest()
                     logger.debug(f"获取图片成功，哈希值: {image_hash}")
                 except Exception as e:
@@ -98,14 +108,7 @@ def create_matcher(command: Command):
                 logger.debug(f"检测到图片类型: {image_type}")
 
                 # 映射命令到对应的对称方向
-                direction_map = {
-                    "对称左": "left",
-                    "对称": "left",
-                    "对称右": "right",
-                    "对称上": "top",
-                    "对称下": "bottom"
-                }
-                direction = direction_map.get(main_keyword, "unknown")
+                direction = DIRECTION_MAP.get(main_keyword, "unknown")
 
                 # 直接在内存中处理
                 logger.debug(f"处理图片，方向: {direction}")
