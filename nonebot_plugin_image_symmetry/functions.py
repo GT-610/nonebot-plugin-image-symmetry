@@ -7,7 +7,11 @@ from PIL import Image, ImageSequence
 from .utils import SymmetryUtils
 
 
-def _apply_symmetry(img_rgba: Image.Image, result_img: Image.Image, direction: str) -> None:
+def _apply_symmetry(
+    img_rgba: Image.Image,
+    result_img: Image.Image,
+    direction: str,
+) -> None:
     """应用对称变换到图像
 
     Args:
@@ -76,7 +80,10 @@ def _process_single_frame(img: Image.Image, direction: str) -> Image.Image:
         return img.copy()
 
 
-def _process_gif_frames(img: Image.Image, direction: str) -> Tuple[List[Image.Image], List[int]]:
+def _process_gif_frames(
+    img: Image.Image,
+    direction: str,
+) -> Tuple[List[Image.Image], List[int]]:
     """处理GIF动画的所有帧并提取延迟信息
     
     Args:
@@ -97,7 +104,11 @@ def _process_gif_frames(img: Image.Image, direction: str) -> Tuple[List[Image.Im
     return frames, durations
 
 
-def _save_gif_frames_to_bytes(frames: List[Image.Image], durations: List[int], original_img: Image.Image) -> io.BytesIO:
+def _save_gif_frames_to_bytes(
+    frames: List[Image.Image],
+    durations: List[int],
+    original_img: Image.Image,
+) -> io.BytesIO:
     """将处理后的GIF帧保存到BytesIO对象中
     
     Args:
@@ -139,7 +150,11 @@ def _save_gif_frames_to_bytes(frames: List[Image.Image], durations: List[int], o
     processed_frames[0].save(output_stream, **gif_params)
     return output_stream
 
-def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_type: Optional[str] = None) -> Optional[bytes]:
+def _process_image_symmetric_from_bytes(
+    img_bytes: bytes,
+    direction: str,
+    image_type: Optional[str] = None,
+) -> Optional[bytes]:
     """从字节数据处理图像对称变换
     
     Args:
@@ -174,7 +189,12 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
             logger.exception("创建图像对象失败")
             return None
 
-        is_gif = image_type and image_type.startswith("gif") and hasattr(img, "is_animated") and img.is_animated
+        is_gif = (
+            image_type
+            and image_type.startswith("gif")
+            and hasattr(img, "is_animated")
+            and img.is_animated
+        )
 
         if is_gif:
             logger.debug(f"处理GIF动画，帧数: {img.n_frames}")
@@ -211,7 +231,10 @@ def _process_image_symmetric_from_bytes(img_bytes: bytes, direction: str, image_
             pass
 
 
-def symmetric_left(img_bytes: bytes, image_type: Optional[str] = None) -> Optional[bytes]:
+def symmetric_left(
+    img_bytes: bytes,
+    image_type: Optional[str] = None,
+) -> Optional[bytes]:
     """图像左侧对称处理
     Args:
         img_bytes: 输入图像字节数据
@@ -223,7 +246,10 @@ def symmetric_left(img_bytes: bytes, image_type: Optional[str] = None) -> Option
     return _process_image_symmetric_from_bytes(img_bytes, "left", image_type)
 
 
-def symmetric_right(img_bytes: bytes, image_type: Optional[str] = None) -> Optional[bytes]:
+def symmetric_right(
+    img_bytes: bytes,
+    image_type: Optional[str] = None,
+) -> Optional[bytes]:
     """图像右侧对称处理
     Args:
         img_bytes: 输入图像字节数据
@@ -235,7 +261,10 @@ def symmetric_right(img_bytes: bytes, image_type: Optional[str] = None) -> Optio
     return _process_image_symmetric_from_bytes(img_bytes, "right", image_type)
 
 
-def symmetric_top(img_bytes: bytes, image_type: Optional[str] = None) -> Optional[bytes]:
+def symmetric_top(
+    img_bytes: bytes,
+    image_type: Optional[str] = None,
+) -> Optional[bytes]:
     """图像顶部对称处理
     Args:
         img_bytes: 输入图像字节数据
@@ -247,7 +276,10 @@ def symmetric_top(img_bytes: bytes, image_type: Optional[str] = None) -> Optiona
     return _process_image_symmetric_from_bytes(img_bytes, "top", image_type)
 
 
-def symmetric_bottom(img_bytes: bytes, image_type: Optional[str] = None) -> Optional[bytes]:
+def symmetric_bottom(
+    img_bytes: bytes,
+    image_type: Optional[str] = None,
+) -> Optional[bytes]:
     """图像底部对称处理
     Args:
         img_bytes: 输入图像字节数据

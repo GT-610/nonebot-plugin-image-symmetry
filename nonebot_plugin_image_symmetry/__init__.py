@@ -1,5 +1,3 @@
-import hashlib
-
 from nonebot import get_driver, require
 from nonebot.adapters import Bot, Event
 from nonebot.exception import FinishedException
@@ -37,19 +35,10 @@ __plugin_meta__ = PluginMetadata(
 # 获取驱动实例，用于插件生命周期管理
 driver = get_driver()
 
-# 命令到对称方向的映射
-DIRECTION_MAP = {
-    "对称左": "left",
-    "对称": "left",
-    "对称右": "right",
-    "对称上": "top",
-    "对称下": "bottom"
-}
 
-
-def create_matcher(command: Command):
+def create_matcher(command: Command) -> None:
     """为指定命令创建命令匹配器和处理逻辑
-    
+
     Args:
         command: 命令对象，包含关键字和处理函数
     """
@@ -110,9 +99,6 @@ def create_matcher(command: Command):
 
             image_type = SymmetryUtils.identify_image_type(img_bytes)
             logger.debug(f"检测到图片类型: {image_type}")
-
-            direction = DIRECTION_MAP.get(main_keyword, "unknown")
-            logger.debug(f"处理图片，方向: {direction}")
 
             processed_data = await run_sync(command.func)(
                 img_bytes=img_bytes,
