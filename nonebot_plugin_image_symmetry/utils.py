@@ -26,22 +26,6 @@ class SymmetryUtils:
             return "unknown"
 
     @staticmethod
-    def bytes_to_temp_file(img_bytes: bytes) -> tuple:
-        """将字节流转换为临时文件并返回路径和图像类型
-        Args:
-            img_bytes: 图像字节数据
-        Returns:
-            tuple: (临时文件路径, 图像类型)，直接返回(None, 图像类型)
-        """
-        # 识别图像类型
-        image_type = SymmetryUtils.identify_image_type(img_bytes)
-        logger.debug(f"识别到的图像类型: {image_type}")
-
-        # 直接返回None路径和识别到的类型
-        logger.debug("跳过临时文件保存")
-        return None, image_type
-
-    @staticmethod
     def bytes_to_image(img_bytes: bytes) -> Image.Image:
         """将字节数据转换为PIL图像对象
         Args:
