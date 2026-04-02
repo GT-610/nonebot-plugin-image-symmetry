@@ -15,6 +15,7 @@ from nonebot_plugin_alconna import (
     UniMessage,
     on_alconna,
 )
+from arclet.alconna import CommandMeta
 from nonebot_plugin_alconna.builtins.extensions.reply import ReplyMergeExtension
 from nonebot_plugin_alconna.uniseg.tools import image_fetch
 
@@ -56,7 +57,7 @@ def create_matcher(command: Command):
     aliases = command.keywords[1:] if len(command.keywords) > 1 else []
 
     # 创建Alconna命令并添加参数
-    alc = Alconna(main_keyword, command.args)
+    alc = Alconna(main_keyword, command.args, meta=CommandMeta(strict=False))
     # 添加ReplyMergeExtension以支持回复消息处理
     matcher = on_alconna(
         alc,
