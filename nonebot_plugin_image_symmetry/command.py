@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Optional
 
 from nonebot.log import logger
 
@@ -13,7 +13,10 @@ class Command:
     func: Callable
 
 def _create_symmetric_process_func(func: Callable, direction_name: str) -> Callable:
-    def process_func(img_bytes=None, image_type=None):
+    def process_func(
+        img_bytes: Optional[bytes] = None,
+        image_type: Optional[str] = None,
+    ) -> Optional[bytes]:
         try:
             return func(img_bytes, image_type)
         except Exception as e:

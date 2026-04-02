@@ -70,7 +70,7 @@ def create_matcher(command: Command) -> None:
             logger.debug(f"完整消息内容: {event.get_plaintext()}")
             logger.debug(f"matches内容: {matches}")
 
-            extra = getattr(matches, "$extra", [])
+            extra = getattr(matches, "$extra", []) or []
             images = [seg for seg in extra if isinstance(seg, Image)]
 
             if len(images) > 1:
