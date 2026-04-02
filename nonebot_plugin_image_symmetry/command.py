@@ -2,11 +2,12 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from nonebot.log import logger
-from nonebot_plugin_alconna import Args, Image
+from arclet.alconna import Args, MultiVar
+from nonebot_plugin_alconna import Image
 
 from .functions import symmetric_bottom, symmetric_left, symmetric_right, symmetric_top
 
-arg_image = Args["text?", str]["img", Image]["tail?", str]
+arg_image = Args["text?", MultiVar(str)]["img", Image]["tail?", MultiVar(str)]
 
 @dataclass
 class Command:
