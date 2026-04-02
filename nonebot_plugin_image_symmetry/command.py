@@ -6,7 +6,7 @@ from nonebot_plugin_alconna import Args, Image
 
 from .functions import symmetric_bottom, symmetric_left, symmetric_right, symmetric_top
 
-arg_image = Args["img", Image]
+arg_image = Args["text?", str]["img", Image]["tail?", str]
 
 @dataclass
 class Command:
