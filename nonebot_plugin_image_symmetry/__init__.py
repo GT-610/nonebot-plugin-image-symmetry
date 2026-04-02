@@ -2,6 +2,7 @@ import hashlib
 
 from nonebot import get_driver, require
 from nonebot.adapters import Bot, Event
+from nonebot.exception import FinishedException
 from nonebot.log import logger
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from nonebot.typing import T_State
@@ -9,9 +10,10 @@ from nonebot.utils import run_sync
 
 # 引入命令处理插件
 require("nonebot_plugin_alconna")
+from arclet.alconna import Alconna, CommandMeta
 from nonebot_plugin_alconna import (
     AlcMatches,
-    Alconna,
+    Image,
     UniMessage,
     on_alconna,
 )
@@ -56,7 +58,7 @@ def create_matcher(command: Command):
     aliases = command.keywords[1:] if len(command.keywords) > 1 else []
 
     # 创建Alconna命令并添加参数
-    alc = Alconna(main_keyword, command.args)
+    alc = Alconna(main_keyword, meta=CommandMeta(strict=False))
     # 添加ReplyMergeExtension以支持回复消息处理
     matcher = on_alconna(
         alc,
@@ -68,71 +70,67 @@ def create_matcher(command: Command):
 
     # 注册命令处理函数
     @matcher.handle()
-    async def handle_function(bot: Bot, event: Event, state: T_State, matches: AlcMatches):
+    async def handle_function(
+        bot: Bot,
+        event: Event,
+        state: T_State,
+        matches: AlcMatches,
+    ) -> None:
         try:
-            # 调试输出：记录识别到的命令和消息内容
             logger.debug(f"识别到命令: {main_keyword}")
             logger.debug(f"完整消息内容: {event.get_plaintext()}")
+            logger.debug(f"matches内容: {matches}")
 
-            img_bytes = None
-            image_info = None
+            extra = getattr(matches, "$extra", [])
+            images = [seg for seg in extra if isinstance(seg, Image)]
 
-            # 从命令参数中获取图片
-            if hasattr(matches, "img") and matches.img:
-                img = matches.img
-                image_info = f"命令参数图片 - URL: {getattr(img, 'url', 'N/A')}"
-                logger.debug(f"获取图片: {image_info}")
-
-                # 记录下载图片的信息
-                logger.info(f"开始处理图片: URL: {getattr(img, 'url', 'N/A')}")
-
-                # 下载图片字节数据
-                try:
-                    img_bytes = await image_fetch(event, bot, state, img)
-                    if not img_bytes:
-                        logger.error("图片下载失败: 返回空数据")
-                        await matcher.finish("图片下载失败，请重试")
-                        return
-
-                    logger.debug(f"成功下载图片，大小: {len(img_bytes)} 字节")
-
-                    # 计算图片哈希值用于标识
-                    image_hash = hashlib.md5(img_bytes).hexdigest()
-                    logger.debug(f"获取图片成功，哈希值: {image_hash}")
-                except Exception as e:
-                    logger.error(f"下载图片异常: {type(e).__name__}: {e}")
-                    await matcher.finish(f"图片处理异常: {e!s}")
-
-                # 识别图片类型
-                image_type = SymmetryUtils.identify_image_type(img_bytes)
-                logger.debug(f"检测到图片类型: {image_type}")
-
-                # 映射命令到对应的对称方向
-                direction = DIRECTION_MAP.get(main_keyword, "unknown")
-
-                # 直接在内存中处理
-                logger.debug(f"处理图片，方向: {direction}")
-
-                # 异步执行图像处理（直接传入字节数据）
-                processed_data = await run_sync(command.func)(
-                    img_bytes=img_bytes,
-                    image_type=image_type
-                )
-
-                if not processed_data:
-                    logger.error("图像处理失败，返回空数据")
-                    await matcher.finish("图像处理失败，请重试")
-
-                logger.debug(f"处理后图片大小: {len(processed_data)} 字节")
-
-                # 直接发送字节数据
-                await UniMessage.image(raw=processed_data).send()
+            if len(images) > 1:
+                await matcher.finish("不支持对称多张图片，请只发送一张图片")
                 return
 
+            if len(images) == 0:
+                await matcher.finish("未检测到图片，请发送包含图片的消息")
+                return
+
+            img_obj = images[0]
+            logger.info(f"开始处理图片: URL: {getattr(img_obj, 'url', 'N/A')}")
+
+            try:
+                img_bytes = await image_fetch(event, bot, state, img_obj)
+                if not img_bytes:
+                    logger.error("图片下载失败: 返回空数据")
+                    await matcher.finish("图片下载失败，请重试")
+                    return
+
+                logger.debug(f"成功下载图片，大小: {len(img_bytes)} 字节")
+            except Exception as e:
+                logger.error(f"下载图片异常: {type(e).__name__}: {e}")
+                await matcher.finish(f"图片处理异常: {e!s}")
+                return
+
+            image_type = SymmetryUtils.identify_image_type(img_bytes)
+            logger.debug(f"检测到图片类型: {image_type}")
+
+            direction = DIRECTION_MAP.get(main_keyword, "unknown")
+            logger.debug(f"处理图片，方向: {direction}")
+
+            processed_data = await run_sync(command.func)(
+                img_bytes=img_bytes,
+                image_type=image_type
+            )
+
+            if not processed_data:
+                logger.error("图像处理失败，返回空数据")
+                await matcher.finish("图像处理失败，请重试")
+                return
+
+            logger.debug(f"处理后图片大小: {len(processed_data)} 字节")
+            await UniMessage.image(raw=processed_data).send()
+
+        except FinishedException:
+            raise
         except Exception as e:
-            # 捕获所有异常并记录错误日志
             logger.error(f"处理命令时发生错误: {type(e).__name__}: {e}")
-            # 向用户发送友好的错误消息
             await matcher.finish(f"处理失败：{e!s}")
 
 def create_matchers():
