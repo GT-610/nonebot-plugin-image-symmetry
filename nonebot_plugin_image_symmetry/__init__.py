@@ -92,6 +92,8 @@ def create_matcher(command: Command) -> None:
                     return
 
                 logger.debug(f"成功下载图片，大小: {len(img_bytes)} 字节")
+            except FinishedException:
+                raise
             except Exception as e:
                 logger.error(f"下载图片异常: {type(e).__name__}: {e}")
                 await matcher.finish(f"图片处理异常: {e!s}")
